@@ -140,6 +140,7 @@ export function HomePageRenderer({
   const ctaButtonClassName = isCompactPreview
     ? 'inline-flex items-center justify-center rounded-xl px-12 py-4 font-bold transition-all duration-300 hover:-translate-y-1 shadow-[0_0_25px_rgba(14,165,233,0.20)]'
     : 'inline-flex items-center justify-center px-14 py-5 rounded-xl font-bold transition-all hover:-translate-y-1 duration-300 shadow-[0_0_25px_rgba(14,165,233,0.20)]';
+  const activeService = services[safeActiveSlide];
 
   const handlePreviewLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (previewMode) {
@@ -288,7 +289,7 @@ export function HomePageRenderer({
             <Link
               href={hero.primaryButtonHref}
               onClick={handlePreviewLink}
-              className={`inline-flex items-center justify-center rounded-xl font-bold transition-all shadow-[0_0_25px_rgba(14,165,233,0.25)] duration-300 hover:scale-110 ${
+              className={`inline-flex w-full items-center justify-center rounded-xl font-bold transition-all shadow-[0_0_25px_rgba(14,165,233,0.25)] duration-300 hover:scale-110 sm:w-auto ${
                 isCompactPreview ? 'px-8 py-3.5' : 'px-10 py-4'
               }`}
               style={{
@@ -303,7 +304,7 @@ export function HomePageRenderer({
             <Link
               href={hero.secondaryButtonHref}
               onClick={handlePreviewLink}
-              className={`inline-flex items-center justify-center rounded-xl border font-bold backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+              className={`inline-flex w-full items-center justify-center rounded-xl border font-bold backdrop-blur-md transition-all duration-300 hover:scale-105 sm:w-auto ${
                 isCompactPreview ? 'px-8 py-3.5' : 'px-10 py-4'
               }`}
               style={{
@@ -318,7 +319,6 @@ export function HomePageRenderer({
           </div>
         </div>
 
-        <div className="waves-container" />
       </section>
 
       <section className={catalogSectionClassName}>
@@ -363,227 +363,435 @@ export function HomePageRenderer({
           </div>
 
           {services.length > 0 ? (
-            <div className={`relative flex items-center justify-center perspective-container ${sliderHeightClass}`}>
-              <button
-                type="button"
-                onClick={prevSlide}
-                className="absolute left-0 md:left-4 z-50 p-3 rounded-full transition-all backdrop-blur-md group border"
-                style={{
-                  backgroundColor: theme.sliderControlBackground,
-                  borderColor: theme.sliderControlBorder,
-                  color: theme.sliderControlIcon,
-                }}
-              >
-                <ChevronLeft className="h-8 w-8 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={nextSlide}
-                className="absolute right-0 md:right-4 z-50 p-3 rounded-full transition-all backdrop-blur-md group border"
-                style={{
-                  backgroundColor: theme.sliderControlBackground,
-                  borderColor: theme.sliderControlBorder,
-                  color: theme.sliderControlIcon,
-                }}
-              >
-                <ChevronRight className="h-8 w-8 group-hover:scale-110 transition-transform" />
-              </button>
-
-              <div className={`relative h-full w-full flex items-center justify-center ${isCompactPreview ? 'max-w-[920px]' : 'max-w-4xl'}`}>
-                {services.map((service, index) => {
-                  if (Math.abs(index - safeActiveSlide) > 2) {
-                    return null;
-                  }
-
-                  return (
+            <>
+              <div className="md:hidden">
+                <div
+                  className="mx-auto overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-xl"
+                  style={{
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.cardBorder,
+                    maxWidth: '420px',
+                  }}
+                >
+                  <div className="relative h-56 overflow-hidden">
                     <div
-                      key={service.id}
+                      className="absolute inset-0 z-10"
                       style={{
-                        ...getCardStyle(index),
-                        borderColor: theme.cardBorder,
+                        background: `linear-gradient(to top, ${theme.cardImageOverlay}, transparent 65%)`,
                       }}
-                      className="rounded-3xl overflow-hidden shadow-2xl border backdrop-blur-xl"
+                    />
+                    <img src={activeService.image} alt={activeService.title} className="h-full w-full object-cover" />
+                    <div
+                      className="absolute top-4 right-4 z-20 flex items-center gap-1 rounded-full px-3 py-1 font-bold shadow-lg backdrop-blur"
+                      style={{
+                        backgroundColor: theme.cardBadgeBackground,
+                        color: theme.cardBadgeText,
+                        fontSize: `${typography.cardBadgeSize}px`,
+                      }}
                     >
-                      <div className="relative h-full flex flex-col">
-                        <div className={cardImageClassName}>
-                          <div
-                            className="absolute inset-0 z-10"
-                            style={{
-                              background: `linear-gradient(to top, ${theme.cardImageOverlay}, transparent 65%)`,
-                            }}
-                          />
-                          <img
-                            src={service.image}
-                            alt={service.title}
-                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
-                          />
-                          <div
-                            className="absolute top-4 right-4 z-20 backdrop-blur px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-1"
-                            style={{
-                              backgroundColor: theme.cardBadgeBackground,
-                              color: theme.cardBadgeText,
-                              fontSize: `${typography.cardBadgeSize}px`,
-                            }}
-                          >
-                            <Star className="h-3 w-3 fill-current" /> {servicesSection.highlightBadgeText}
-                          </div>
-                        </div>
+                      <Star className="h-3 w-3 fill-current" /> {servicesSection.highlightBadgeText}
+                    </div>
+                  </div>
 
-                        <div className={cardBodyClassName} style={{ backgroundColor: theme.cardBackground }}>
-                          <h3
-                            className="font-bold mb-2 leading-tight"
+                  <div className="flex flex-col p-5" style={{ backgroundColor: theme.cardBackground }}>
+                    <h3
+                      className="mb-2 font-bold leading-tight"
+                      style={{
+                        color: theme.cardTitleText,
+                        fontSize: `${typography.cardTitleSize}px`,
+                      }}
+                    >
+                      {activeService.title}
+                    </h3>
+                    <p
+                      className="mb-5 line-clamp-4 leading-relaxed"
+                      style={{
+                        color: theme.cardDescriptionText,
+                        fontSize: `${typography.cardDescriptionSize}px`,
+                      }}
+                    >
+                      {activeService.description}
+                    </p>
+
+                    <div
+                      className="mb-5 rounded-xl border p-4"
+                      style={{
+                        backgroundColor: theme.cardDocsPanelBackground,
+                        borderColor: theme.cardDocsPanelBorder,
+                      }}
+                    >
+                      <p
+                        className="mb-3 flex items-center gap-2 font-bold uppercase"
+                        style={{
+                          color: theme.cardDocsPanelAccent,
+                          fontSize: `${typography.cardMetaSize}px`,
+                        }}
+                      >
+                        <FileText className="h-4 w-4" /> {activeService.requiredDocuments.length} {servicesSection.documentsLabel}
+                      </p>
+                      <ul className="space-y-2">
+                        {activeService.requiredDocuments.slice(0, 3).map((documentName, documentIndex) => (
+                          <li
+                            key={`${activeService.id}-${documentIndex}`}
+                            className="flex items-start gap-2"
                             style={{
-                              color: theme.cardTitleText,
-                              fontSize: `${typography.cardTitleSize}px`,
-                            }}
-                          >
-                            {service.title}
-                          </h3>
-                          <p
-                            className={`line-clamp-3 leading-relaxed ${isCompactPreview ? 'mb-5' : 'mb-6'}`}
-                            style={{
-                              color: theme.cardDescriptionText,
+                              color: theme.cardDocsPanelText,
                               fontSize: `${typography.cardDescriptionSize}px`,
                             }}
                           >
-                            {service.description}
-                          </p>
-
-                          <div
-                            className={docsPanelClassName}
+                            <span style={{ color: theme.cardDocsPanelAccent }}>•</span>
+                            <span>{documentName}</span>
+                          </li>
+                        ))}
+                        {activeService.requiredDocuments.length > 3 && (
+                          <li
+                            className="font-semibold"
                             style={{
-                              backgroundColor: theme.cardDocsPanelBackground,
-                              borderColor: theme.cardDocsPanelBorder,
+                              color: theme.cardDocsPanelAccent,
+                              fontSize: `${typography.cardDescriptionSize}px`,
                             }}
                           >
-                            <p
-                              className="font-bold uppercase mb-3 flex items-center gap-2"
+                            +{activeService.requiredDocuments.length - 3} {servicesSection.additionalDocumentsLabel}
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div className="mb-4">
+                      <p
+                        className="mb-1 uppercase font-semibold"
+                        style={{
+                          color: theme.cardMetaText,
+                          fontSize: `${typography.cardMetaSize}px`,
+                        }}
+                      >
+                        {servicesSection.priceLabel}
+                      </p>
+                      <p
+                        className="flex items-center gap-1 font-black"
+                        style={{
+                          color: theme.cardPriceText,
+                          fontSize: `${typography.cardPriceSize}px`,
+                        }}
+                      >
+                        <DollarSign className="h-5 w-5" />
+                        {activeService.price.toFixed(2)}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Link
+                        href="/services"
+                        onClick={handlePreviewLink}
+                        className="block rounded-xl border py-3 text-center transition-colors"
+                        style={{
+                          backgroundColor: theme.cardSecondaryButtonBackground,
+                          borderColor: theme.cardSecondaryButtonBorder,
+                          color: theme.cardSecondaryButtonText,
+                          fontSize: `${typography.cardButtonSize}px`,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {servicesSection.detailsButtonText}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(activeService)}
+                        disabled={previewMode}
+                        className="flex items-center justify-center gap-2 rounded-xl py-3 transition-all disabled:cursor-default"
+                        style={{
+                          background: cardPrimaryButtonGradient,
+                          color: theme.cardPrimaryButtonText,
+                          fontSize: `${typography.cardButtonSize}px`,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {addedIds.includes(activeService.id) ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>Adicionado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4" />
+                            <span>{servicesSection.addButtonText}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {services.length > 1 ? (
+                  <div className="mt-5 flex flex-col items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={prevSlide}
+                        className="rounded-full border p-3 transition-all backdrop-blur-md"
+                        style={{
+                          backgroundColor: theme.sliderControlBackground,
+                          borderColor: theme.sliderControlBorder,
+                          color: theme.sliderControlIcon,
+                        }}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={nextSlide}
+                        className="rounded-full border p-3 transition-all backdrop-blur-md"
+                        style={{
+                          backgroundColor: theme.sliderControlBackground,
+                          borderColor: theme.sliderControlBorder,
+                          color: theme.sliderControlIcon,
+                        }}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {services.map((service, index) => (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => setActiveSlide(index)}
+                          className="h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: index === safeActiveSlide ? '28px' : '8px',
+                            backgroundColor: index === safeActiveSlide ? theme.sliderDotActive : theme.sliderDotInactive,
+                            boxShadow: index === safeActiveSlide ? `0 0 10px ${theme.sliderDotActive}` : 'none',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={`relative hidden md:flex items-center justify-center perspective-container ${sliderHeightClass}`}>
+                <button
+                  type="button"
+                  onClick={prevSlide}
+                  className="absolute left-0 md:left-4 z-50 p-3 rounded-full transition-all backdrop-blur-md group border"
+                  style={{
+                    backgroundColor: theme.sliderControlBackground,
+                    borderColor: theme.sliderControlBorder,
+                    color: theme.sliderControlIcon,
+                  }}
+                >
+                  <ChevronLeft className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                </button>
+                <button
+                  type="button"
+                  onClick={nextSlide}
+                  className="absolute right-0 md:right-4 z-50 p-3 rounded-full transition-all backdrop-blur-md group border"
+                  style={{
+                    backgroundColor: theme.sliderControlBackground,
+                    borderColor: theme.sliderControlBorder,
+                    color: theme.sliderControlIcon,
+                  }}
+                >
+                  <ChevronRight className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                </button>
+
+                <div className={`relative h-full w-full flex items-center justify-center ${isCompactPreview ? 'max-w-[920px]' : 'max-w-4xl'}`}>
+                  {services.map((service, index) => {
+                    if (Math.abs(index - safeActiveSlide) > 2) {
+                      return null;
+                    }
+
+                    return (
+                      <div
+                        key={service.id}
+                        style={{
+                          ...getCardStyle(index),
+                          borderColor: theme.cardBorder,
+                        }}
+                        className="rounded-3xl overflow-hidden shadow-2xl border backdrop-blur-xl"
+                      >
+                        <div className="relative h-full flex flex-col">
+                          <div className={cardImageClassName}>
+                            <div
+                              className="absolute inset-0 z-10"
                               style={{
-                                color: theme.cardDocsPanelAccent,
-                                fontSize: `${typography.cardMetaSize}px`,
+                                background: `linear-gradient(to top, ${theme.cardImageOverlay}, transparent 65%)`,
+                              }}
+                            />
+                            <img
+                              src={service.image}
+                              alt={service.title}
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                            />
+                            <div
+                              className="absolute top-4 right-4 z-20 backdrop-blur px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-1"
+                              style={{
+                                backgroundColor: theme.cardBadgeBackground,
+                                color: theme.cardBadgeText,
+                                fontSize: `${typography.cardBadgeSize}px`,
                               }}
                             >
-                              <FileText className="h-4 w-4" /> {service.requiredDocuments.length} {servicesSection.documentsLabel}
-                            </p>
-                            <ul className="space-y-2">
-                              {service.requiredDocuments.slice(0, 3).map((documentName, documentIndex) => (
-                                <li
-                                  key={`${service.id}-${documentIndex}`}
-                                  className="flex items-start gap-2"
-                                  style={{
-                                    color: theme.cardDocsPanelText,
-                                    fontSize: `${typography.cardDescriptionSize}px`,
-                                  }}
-                                >
-                                  <span style={{ color: theme.cardDocsPanelAccent }}>•</span>
-                                  <span>{documentName}</span>
-                                </li>
-                              ))}
-                              {service.requiredDocuments.length > 3 && (
-                                <li
-                                  className="font-semibold"
-                                  style={{
-                                    color: theme.cardDocsPanelAccent,
-                                    fontSize: `${typography.cardDescriptionSize}px`,
-                                  }}
-                                >
-                                  +{service.requiredDocuments.length - 3} {servicesSection.additionalDocumentsLabel}
-                                </li>
-                              )}
-                            </ul>
+                              <Star className="h-3 w-3 fill-current" /> {servicesSection.highlightBadgeText}
+                            </div>
                           </div>
 
-                          <div className="mt-auto">
-                            <div className={`flex items-end justify-between ${isCompactPreview ? 'mb-3.5' : 'mb-4'}`}>
-                              <div>
-                                <p
-                                  className="uppercase font-semibold mb-1"
-                                  style={{
-                                    color: theme.cardMetaText,
-                                    fontSize: `${typography.cardMetaSize}px`,
-                                  }}
-                                >
-                                  {servicesSection.priceLabel}
-                                </p>
-                                <p
-                                  className="font-black flex items-center gap-1"
-                                  style={{
-                                    color: theme.cardPriceText,
-                                    fontSize: `${typography.cardPriceSize}px`,
-                                  }}
-                                >
-                                  <DollarSign className="h-5 w-5" />
-                                  {service.price.toFixed(2)}
-                                </p>
-                              </div>
+                          <div className={cardBodyClassName} style={{ backgroundColor: theme.cardBackground }}>
+                            <h3
+                              className="font-bold mb-2 leading-tight"
+                              style={{
+                                color: theme.cardTitleText,
+                                fontSize: `${typography.cardTitleSize}px`,
+                              }}
+                            >
+                              {service.title}
+                            </h3>
+                            <p
+                              className={`line-clamp-3 leading-relaxed ${isCompactPreview ? 'mb-5' : 'mb-6'}`}
+                              style={{
+                                color: theme.cardDescriptionText,
+                                fontSize: `${typography.cardDescriptionSize}px`,
+                              }}
+                            >
+                              {service.description}
+                            </p>
+
+                            <div
+                              className={docsPanelClassName}
+                              style={{
+                                backgroundColor: theme.cardDocsPanelBackground,
+                                borderColor: theme.cardDocsPanelBorder,
+                              }}
+                            >
+                              <p
+                                className="font-bold uppercase mb-3 flex items-center gap-2"
+                                style={{
+                                  color: theme.cardDocsPanelAccent,
+                                  fontSize: `${typography.cardMetaSize}px`,
+                                }}
+                              >
+                                <FileText className="h-4 w-4" /> {service.requiredDocuments.length} {servicesSection.documentsLabel}
+                              </p>
+                              <ul className="space-y-2">
+                                {service.requiredDocuments.slice(0, 3).map((documentName, documentIndex) => (
+                                  <li
+                                    key={`${service.id}-${documentIndex}`}
+                                    className="flex items-start gap-2"
+                                    style={{
+                                      color: theme.cardDocsPanelText,
+                                      fontSize: `${typography.cardDescriptionSize}px`,
+                                    }}
+                                  >
+                                    <span style={{ color: theme.cardDocsPanelAccent }}>•</span>
+                                    <span>{documentName}</span>
+                                  </li>
+                                ))}
+                                {service.requiredDocuments.length > 3 && (
+                                  <li
+                                    className="font-semibold"
+                                    style={{
+                                      color: theme.cardDocsPanelAccent,
+                                      fontSize: `${typography.cardDescriptionSize}px`,
+                                    }}
+                                  >
+                                    +{service.requiredDocuments.length - 3} {servicesSection.additionalDocumentsLabel}
+                                  </li>
+                                )}
+                              </ul>
                             </div>
 
-                            <div className={`grid grid-cols-2 ${isCompactPreview ? 'gap-2.5' : 'gap-3'}`}>
-                              <Link
-                                href="/services"
-                                onClick={handlePreviewLink}
-                                className={`block rounded-xl border text-center transition-colors ${isCompactPreview ? 'py-2' : 'py-2.5'}`}
-                                style={{
-                                  backgroundColor: theme.cardSecondaryButtonBackground,
-                                  borderColor: theme.cardSecondaryButtonBorder,
-                                  color: theme.cardSecondaryButtonText,
-                                  fontSize: `${typography.cardButtonSize}px`,
-                                  fontWeight: 700,
-                                }}
-                              >
-                                {servicesSection.detailsButtonText}
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => handleAdd(service)}
-                                disabled={previewMode}
-                                className={`flex items-center justify-center gap-2 rounded-xl transition-all disabled:cursor-default ${
-                                  isCompactPreview ? 'py-2' : 'py-2.5'
-                                }`}
-                                style={{
-                                  background: cardPrimaryButtonGradient,
-                                  color: theme.cardPrimaryButtonText,
-                                  fontSize: `${typography.cardButtonSize}px`,
-                                  fontWeight: 800,
-                                }}
-                              >
-                                {addedIds.includes(service.id) ? (
-                                  <>
-                                    <Check className="h-4 w-4" />
-                                    <span>Adicionado!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="h-4 w-4" />
-                                    <span>{servicesSection.addButtonText}</span>
-                                  </>
-                                )}
-                              </button>
+                            <div className="mt-auto">
+                              <div className={`flex items-end justify-between ${isCompactPreview ? 'mb-3.5' : 'mb-4'}`}>
+                                <div>
+                                  <p
+                                    className="uppercase font-semibold mb-1"
+                                    style={{
+                                      color: theme.cardMetaText,
+                                      fontSize: `${typography.cardMetaSize}px`,
+                                    }}
+                                  >
+                                    {servicesSection.priceLabel}
+                                  </p>
+                                  <p
+                                    className="font-black flex items-center gap-1"
+                                    style={{
+                                      color: theme.cardPriceText,
+                                      fontSize: `${typography.cardPriceSize}px`,
+                                    }}
+                                  >
+                                    <DollarSign className="h-5 w-5" />
+                                    {service.price.toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className={`grid grid-cols-2 ${isCompactPreview ? 'gap-2.5' : 'gap-3'}`}>
+                                <Link
+                                  href="/services"
+                                  onClick={handlePreviewLink}
+                                  className={`block rounded-xl border text-center transition-colors ${isCompactPreview ? 'py-2' : 'py-2.5'}`}
+                                  style={{
+                                    backgroundColor: theme.cardSecondaryButtonBackground,
+                                    borderColor: theme.cardSecondaryButtonBorder,
+                                    color: theme.cardSecondaryButtonText,
+                                    fontSize: `${typography.cardButtonSize}px`,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {servicesSection.detailsButtonText}
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdd(service)}
+                                  disabled={previewMode}
+                                  className={`flex items-center justify-center gap-2 rounded-xl transition-all disabled:cursor-default ${
+                                    isCompactPreview ? 'py-2' : 'py-2.5'
+                                  }`}
+                                  style={{
+                                    background: cardPrimaryButtonGradient,
+                                    color: theme.cardPrimaryButtonText,
+                                    fontSize: `${typography.cardButtonSize}px`,
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  {addedIds.includes(service.id) ? (
+                                    <>
+                                      <Check className="h-4 w-4" />
+                                      <span>Adicionado!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus className="h-4 w-4" />
+                                      <span>{servicesSection.addButtonText}</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
-              <div className="absolute -bottom-8 flex gap-2">
-                {services.map((service, index) => (
-                  <button
-                    key={service.id}
-                    type="button"
-                    onClick={() => setActiveSlide(index)}
-                    className="h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: index === safeActiveSlide ? '32px' : '8px',
-                      backgroundColor: index === safeActiveSlide ? theme.sliderDotActive : theme.sliderDotInactive,
-                      boxShadow: index === safeActiveSlide ? `0 0 10px ${theme.sliderDotActive}` : 'none',
-                    }}
-                  />
-                ))}
+                <div className="absolute -bottom-8 flex gap-2">
+                  {services.map((service, index) => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => setActiveSlide(index)}
+                      className="h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: index === safeActiveSlide ? '32px' : '8px',
+                        backgroundColor: index === safeActiveSlide ? theme.sliderDotActive : theme.sliderDotInactive,
+                        boxShadow: index === safeActiveSlide ? `0 0 10px ${theme.sliderDotActive}` : 'none',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           ) : (
             <div
               className="rounded-3xl border p-10 text-center"
@@ -664,7 +872,7 @@ export function HomePageRenderer({
             <Link
               href={cta.buttonHref}
               onClick={handlePreviewLink}
-              className={ctaButtonClassName}
+              className={`${ctaButtonClassName} w-full sm:w-auto`}
               style={{
                 background: ctaButtonGradient,
                 color: theme.ctaButtonText,

@@ -161,10 +161,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div>
             <h3 className="theme-text-strong font-semibold mb-4 text-sm uppercase tracking-wider">Atendimento</h3>
             <p className="text-sm theme-text-muted">Segunda a Sexta<br />08:00 - 18:00</p>
-            <div className="mt-4 flex gap-4">
-              <div className="w-8 h-8 rounded-full theme-panel-soft hover:bg-blue-600 transition-colors cursor-pointer"></div>
-              <div className="w-8 h-8 rounded-full theme-panel-soft hover:bg-blue-600 transition-colors cursor-pointer"></div>
-            </div>
+            <p className="mt-4 text-sm theme-text-body">Atendimento online com retorno rápido no WhatsApp e por email.</p>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 text-center text-xs theme-text-subtle" style={{ borderTop: '1px solid var(--theme-nav-border)' }}>
