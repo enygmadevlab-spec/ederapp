@@ -31,10 +31,10 @@ export default function EmployeeDashboard() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="flex justify-center items-center h-[60vh]"><Loader2 className="h-10 w-10 text-sky-400 animate-spin" /></div>;
+  if (loading) return <div className="theme-workspace theme-workspace-shell flex justify-center items-center h-[60vh]"><Loader2 className="h-10 w-10 text-sky-400 animate-spin" /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 animate-fade-in">
+    <div className="theme-workspace theme-workspace-shell max-w-7xl mx-auto px-4 py-12 animate-fade-in">
       <div className="mb-12">
         <h1 className="text-4xl md:text-5xl font-black text-white mb-2">Fila de Análise</h1>
         <p className="text-slate-300 text-lg">Gerencie e aprove as documentações pendentes</p>

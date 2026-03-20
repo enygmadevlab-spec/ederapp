@@ -22,7 +22,8 @@ export default function PaymentPage() {
       if (!snap.exists()) {
         setOrder(null);
       } else {
-        setOrder({ id: snap.id, ...(snap.data() as any) } as Order);
+        const orderData = snap.data() as Omit<Order, 'id'>;
+        setOrder({ id: snap.id, ...orderData });
       }
       setLoading(false);
     });
@@ -31,7 +32,7 @@ export default function PaymentPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[60vh]">
+      <div className="theme-workspace theme-workspace-shell flex justify-center items-center h-[60vh]">
         <Loader2 className="h-10 w-10 text-sky-400 animate-spin" />
       </div>
     );
@@ -39,7 +40,7 @@ export default function PaymentPage() {
 
   if (!order) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+      <div className="theme-workspace theme-workspace-shell max-w-4xl mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-bold text-white mb-4">Pedido não encontrado</h1>
       </div>
     );
@@ -56,7 +57,7 @@ export default function PaymentPage() {
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixPayload)}`;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 animate-fade-in">
+    <div className="theme-workspace theme-workspace-shell max-w-4xl mx-auto px-4 py-12 animate-fade-in">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white">💳 Pagamento do Pedido</h1>

@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
 import { db, storage } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -12,7 +11,6 @@ import Link from 'next/link';
 
 export default function ClientDashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { orders } = useCart();
   const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -221,7 +219,7 @@ export default function ClientDashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex justify-center items-center h-[60vh]">
+      <div className="theme-workspace theme-workspace-shell flex justify-center items-center h-[60vh]">
         <Loader2 className="h-12 w-12 text-sky-400 animate-spin" />
       </div>
     );
@@ -229,7 +227,7 @@ export default function ClientDashboard() {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+      <div className="theme-workspace theme-workspace-shell max-w-4xl mx-auto px-4 py-20 text-center">
         <h2 className="text-2xl font-bold text-white mb-3">Você não está logado</h2>
         <p className="text-slate-400 mb-6">Faça login para ver seus pedidos ou comece um novo no catálogo de serviços.</p>
         <div className="flex items-center justify-center gap-3">
@@ -241,7 +239,7 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 animate-fade-in">
+    <div className="theme-workspace theme-workspace-shell max-w-7xl mx-auto px-4 py-12 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
@@ -256,12 +254,12 @@ export default function ClientDashboard() {
       {/* Tabs */}
       <div className="mb-8 flex items-center gap-3 border-b border-slate-700/50">
         {[
-          ['orders', '📋 Meus Pedidos'],
-          ['settings', '⚙️ Configurações']
-        ].map(([id, label]) => (
+          { id: 'orders' as const, label: '📋 Meus Pedidos' },
+          { id: 'settings' as const, label: '⚙️ Configurações' }
+        ].map(({ id, label }) => (
           <button
             key={id}
-            onClick={() => setTab(id as any)}
+            onClick={() => setTab(id)}
             className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 ${tab === id
               ? 'border-sky-500 text-sky-300'
               : 'border-transparent text-slate-400 hover:text-slate-300'
@@ -347,7 +345,7 @@ export default function ClientDashboard() {
                 <select
                   value={statusFilterLocal}
                   onChange={(e) => {
-                    setStatusFilterLocal(e.target.value as any);
+                    setStatusFilterLocal(e.target.value as 'all' | Order['status']);
                     setPage(1);
                   }}
                   className="p-2.5 rounded-lg bg-white/5 border border-sky-500/20 text-white focus:border-sky-500 focus:outline-none"
@@ -360,7 +358,7 @@ export default function ClientDashboard() {
                 </select>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'value_desc' | 'value_asc')}
                   className="p-2.5 rounded-lg bg-white/5 border border-sky-500/20 text-white focus:border-sky-500 focus:outline-none"
                 >
                   <option value="newest">Mais recentes</option>
@@ -396,7 +394,7 @@ export default function ClientDashboard() {
                       <span className="text-xs text-slate-500 font-medium mt-1 block">
                         {new Date(order.date).toLocaleDateString('pt-BR')} às {new Date(order.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      <div className="mt-3"><OrderTimeline status={order.status as any} /></div>
+                      <div className="mt-3"><OrderTimeline status={order.status} /></div>
                     </div>
                     <div className="text-right flex flex-col items-end gap-2">
                       {getStatusBadge(order.status)}

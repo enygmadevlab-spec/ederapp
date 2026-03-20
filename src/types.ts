@@ -5,7 +5,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  createdAt?: any;
+  createdAt?: string | Date | null;
 }
 
 export interface ServiceProduct {

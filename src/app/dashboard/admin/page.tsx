@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Order, Product, OrderItem, LayoutEditConfig, ServiceProduct } from '@/types';
+import { Order, Product, OrderItem, LayoutEditConfig, ServiceProduct, UserRole } from '@/types';
 import { 
   BarChart3, Package, ShoppingCart, TrendingUp, LogOut, Menu, X,
   CheckCircle, Clock, AlertCircle, Loader2, Search, Plus, FileText,
@@ -21,7 +21,7 @@ interface User {
   id: string;
   name?: string;
   email: string;
-  role?: string;
+  role?: UserRole;
 }
 
 interface ProductFormData {
@@ -33,6 +33,13 @@ interface ProductFormData {
   requiredFiles: string[];
   image?: string;
   imageFile?: File | null;
+}
+
+interface StatCardProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+  trend?: number;
 }
 
 export default function AdminDashboard() {
@@ -479,7 +486,7 @@ export default function AdminDashboard() {
     setShowProductForm(true);
   };
 
-  const StatCard = ({ icon: Icon, label, value, trend }: any) => (
+  const StatCard = ({ icon: Icon, label, value, trend }: StatCardProps) => (
     <div className="glass-panel p-6 rounded-xl border border-sky-500/20 hover:border-sky-500/40 transition-all">
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -505,14 +512,14 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-[#020c1b]">
+      <div className="theme-workspace theme-workspace-shell flex justify-center items-center h-screen">
         <Loader2 className="h-10 w-10 text-sky-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#020c1b] overflow-hidden">
+    <div className="theme-workspace theme-workspace-shell flex h-screen overflow-hidden">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white/5 backdrop-blur border-r border-sky-500/20 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
@@ -906,7 +913,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <select
                           value={formData.category}
-                          onChange={(e) => setFormData({...formData, category: e.target.value as any})}
+                          onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                           className="px-4 py-2 bg-white/5 border border-sky-500/20 rounded-lg text-white focus:border-sky-500 focus:outline-none"
                         >
                           <option value="insurance">Seguro</option>
@@ -1340,7 +1347,7 @@ export default function AdminDashboard() {
                       <label className="text-slate-400 text-sm font-medium block mb-2">Função</label>
                       <select
                         value={editingUser.role || 'client'}
-                        onChange={(e) => setEditingUser({...editingUser, role: e.target.value as any})}
+                        onChange={(e) => setEditingUser({...editingUser, role: e.target.value as UserRole})}
                         className="w-full px-4 py-2 bg-white/5 border border-sky-500/20 rounded-lg text-white focus:border-sky-500 focus:outline-none"
                       >
                         <option value="client">Cliente</option>

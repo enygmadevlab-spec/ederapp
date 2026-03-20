@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { Anchor, ShoppingCart, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { FloatingCart } from './FloatingCart';
 import React from 'react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -14,6 +15,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const isLightTheme = theme === 'light';
+  const navHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-sky-300';
+  const iconHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-sky-400';
+  const footerHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-blue-400';
 
   const handleLogout = async () => {
     await logout();
@@ -36,20 +41,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
-              <Link href="/services" className={`text-sm font-semibold transition-colors duration-300 ${pathname === '/services' ? 'theme-accent drop-shadow-[0_0_8px_rgba(14,165,233,0.35)]' : 'theme-text-body hover:text-sky-300'}`}>
+              <Link href="/services" className={`text-sm font-semibold transition-colors duration-300 ${pathname === '/services' ? 'theme-accent drop-shadow-[0_0_8px_rgba(14,165,233,0.35)]' : `theme-text-body ${navHoverClassName}`}`}>
                 🎯 Serviços
               </Link>
 
               {user ? (
                 <>
                   {user.role === 'client' && (
-                    <Link href="/dashboard/client" className="text-sm font-semibold theme-text-body hover:text-sky-300 transition-colors">📋 Meus Pedidos</Link>
+                    <Link href="/dashboard/client" className={`text-sm font-semibold theme-text-body transition-colors ${navHoverClassName}`}>📋 Meus Pedidos</Link>
                   )}
                   {user.role === 'admin' && (
-                    <Link href="/dashboard/admin" className="text-sm font-semibold theme-text-body hover:text-sky-300 transition-colors">⚙️ Painel Admin</Link>
+                    <Link href="/dashboard/admin" className={`text-sm font-semibold theme-text-body transition-colors ${navHoverClassName}`}>⚙️ Painel Admin</Link>
                   )}
                   {user.role === 'employee' && (
-                    <Link href="/dashboard/employee" className="text-sm font-semibold theme-text-body hover:text-sky-300 transition-colors">👥 Painel Colaborador</Link>
+                    <Link href="/dashboard/employee" className={`text-sm font-semibold theme-text-body transition-colors ${navHoverClassName}`}>👥 Painel Colaborador</Link>
                   )}
                   <div className="flex items-center gap-4 ml-4 pl-4 border-l" style={{ borderColor: 'var(--theme-surface-border)' }}>
                     <span className="text-sm theme-text-muted">Olá, <span className="theme-text-strong font-semibold">{user.name.split(' ')[0]}</span></span>
@@ -59,7 +64,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   </div>
                 </>
               ) : (
-                <Link href="/login" className="flex items-center gap-2 text-sm font-semibold theme-text-body hover:text-sky-300 transition-colors px-4 py-2 rounded-lg theme-panel-soft">
+                <Link href="/login" className={`flex items-center gap-2 text-sm font-semibold theme-text-body transition-colors px-4 py-2 rounded-lg theme-panel-soft ${navHoverClassName}`}>
                   🔓 Entrar
                 </Link>
               )}
@@ -75,7 +80,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </button>
 
               {(!user || user.role === 'client') && (
-                <Link href="/checkout" className="relative p-2 theme-text-body hover:text-sky-400 transition-colors hover:scale-110 duration-300">
+                <Link href="/checkout" className={`relative p-2 theme-text-body transition-colors hover:scale-110 duration-300 ${iconHoverClassName}`}>
                   <ShoppingCart className="h-6 w-6" />
                   {cart.length > 0 && (
                     <span className="absolute -top-1 -right-1 bg-gradient-to-r from-sky-500 to-cyan-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full shadow-lg animate-bounce">
@@ -87,7 +92,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </nav>
 
             <div className="md:hidden">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 theme-text-body hover:text-sky-400">
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`p-2 theme-text-body ${iconHoverClassName}`}>
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
@@ -125,6 +130,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </main>
 
+      <FloatingCart />
+
       <footer className="theme-footer py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
@@ -141,11 +148,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div>
             <h3 className="theme-text-strong font-semibold mb-4 text-sm uppercase tracking-wider">Contato</h3>
             <ul className="space-y-3">
-              <li className="flex items-center gap-2 text-sm theme-text-body hover:text-blue-400 transition-colors cursor-pointer">
+              <li className={`flex items-center gap-2 text-sm theme-text-body transition-colors cursor-pointer ${footerHoverClassName}`}>
                 WhatsApp: (48) 99624-1068
               </li>
-              <li className="flex items-center gap-2 text-sm theme-text-body hover:text-blue-400 transition-colors cursor-pointer">
-                Email: contato@edernautica.com.br
+              <li className={`flex items-center gap-2 text-sm theme-text-body transition-colors cursor-pointer ${footerHoverClassName}`}>
+                Email: pescasulbrasil@gmail.com
               </li>
             </ul>
           </div>
@@ -159,7 +166,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 text-center text-xs theme-text-subtle" style={{ borderTop: '1px solid var(--theme-nav-border)' }}>
-          © 2024 Eder Martins Assessoria Náutica. Todos os direitos reservados.
+          © {new Date().getFullYear()} Eder Martins Assessoria Náutica. Todos os direitos reservados.
         </div>
       </footer>
     </div>

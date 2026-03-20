@@ -14,7 +14,7 @@ export default function ServicesPage() {
   const { theme } = useTheme();
   const [addedIds, setAddedIds] = React.useState<string[]>([]);
   const [services, setServices] = useState<ServiceProduct[]>(DEFAULT_SERVICES);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const isLight = theme === 'light';
 
   const pageBackground = isLight ? '#eef2f6' : undefined;
@@ -22,6 +22,8 @@ export default function ServicesPage() {
   const bodyColor = isLight ? '#23435f' : '#cbd5e1';
   const mutedColor = isLight ? '#5b7287' : '#94a3b8';
   const subtleColor = isLight ? '#6f8395' : '#64748b';
+  const accentColor = isLight ? '#0c5fa5' : '#7dd3fc';
+  const accentSoftColor = isLight ? '#1887c9' : '#38bdf8';
   const cardBackground = isLight ? 'rgba(255, 255, 255, 0.94)' : undefined;
   const cardBorder = isLight ? 'rgba(16, 47, 72, 0.10)' : undefined;
   const cardPanelBackground = isLight ? '#f7f9fb' : undefined;
@@ -31,22 +33,32 @@ export default function ServicesPage() {
 
   // Carregar serviços do Firestore
   useEffect(() => {
+    if (!db) {
+      setServices(DEFAULT_SERVICES);
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       const q = query(collection(db, "products"));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const dbServices: ServiceProduct[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as ServiceProduct));
-        
-        // Se houver serviços no BD, use-os. Caso contrário, use os padrões
-        if (dbServices.length > 0) {
-          setServices(dbServices);
-        } else {
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const dbServices: ServiceProduct[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as ServiceProduct));
+
+          setServices(dbServices.length > 0 ? dbServices : DEFAULT_SERVICES);
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Erro ao carregar serviços:', error);
           setServices(DEFAULT_SERVICES);
+          setLoading(false);
         }
-        setLoading(false);
-      });
+      );
       return () => unsubscribe();
     } catch (error) {
       console.error('Erro ao carregar serviços:', error);
@@ -66,7 +78,7 @@ export default function ServicesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-16 text-center">
-          <span className="text-sky-400 text-xs font-bold tracking-[0.3em] uppercase mb-3 block">🎯 Catálogo Completo</span>
+          <span className="text-xs font-bold tracking-[0.3em] uppercase mb-3 block" style={{ color: accentSoftColor }}>🎯 Catálogo Completo</span>
           <h1 className="text-5xl md:text-6xl font-black mb-6" style={{ color: titleColor }}>Serviços Profissionais</h1>
           <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: bodyColor }}>
             Todos os documentos e regularizações necessárias para sua embarcação. Serviços especializados com expertise de 20+ anos.
@@ -99,7 +111,7 @@ export default function ServicesPage() {
               </div>
 
               <div className="p-6 flex-grow flex flex-col">
-                <h3 className="text-xl font-bold mb-2 leading-tight group-hover:text-sky-300 transition-colors" style={{ color: titleColor }}>{service.title}</h3>
+                <h3 className={`text-xl font-bold mb-2 leading-tight transition-colors ${isLight ? 'group-hover:text-sky-700' : 'group-hover:text-sky-300'}`} style={{ color: titleColor }}>{service.title}</h3>
                 <p className="text-sm mb-6 flex-grow line-clamp-3" style={{ color: bodyColor }}>{service.description}</p>
 
                 {/* Documentos Necessários */}
@@ -110,18 +122,18 @@ export default function ServicesPage() {
                     borderColor: cardPanelBorder,
                   }}
                 >
-                  <p className="text-xs font-bold text-sky-300 uppercase mb-3 flex items-center gap-2">
+                  <p className="text-xs font-bold uppercase mb-3 flex items-center gap-2" style={{ color: accentColor }}>
                     <FileText className="h-4 w-4" /> {service.requiredDocuments.length} Documentos
                   </p>
                   <ul className="space-y-2">
                     {service.requiredDocuments.slice(0, 3).map((doc, idx) => (
                       <li key={idx} className="text-[12px] flex items-start gap-2" style={{ color: mutedColor }}>
-                        <span className="text-sky-400 mt-0.5">•</span>
+                        <span className="mt-0.5" style={{ color: accentSoftColor }}>•</span>
                         <span>{doc}</span>
                       </li>
                     ))}
                     {service.requiredDocuments.length > 3 && (
-                      <li className="text-[12px] text-sky-400 font-semibold">
+                      <li className="text-[12px] font-semibold" style={{ color: accentSoftColor }}>
                         +{service.requiredDocuments.length - 3} documentos adicionais
                       </li>
                     )}
@@ -132,7 +144,7 @@ export default function ServicesPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <p className="text-xs uppercase font-semibold mb-1" style={{ color: subtleColor }}>Investimento</p>
-                    <p className="text-2xl font-black text-sky-300 flex items-center gap-1">
+                    <p className="text-2xl font-black flex items-center gap-1" style={{ color: accentColor }}>
                       <DollarSign className="h-5 w-5" />
                       {service.price.toFixed(2)}
                     </p>
@@ -169,7 +181,7 @@ export default function ServicesPage() {
           <div className="bg-gradient-to-r from-sky-600/20 to-cyan-600/20 border-2 border-sky-500/50 rounded-2xl p-8 text-center" style={{ background: ctaBackground }}>
             <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: titleColor }}>Você tem {cart.length} {cart.length === 1 ? 'serviço' : 'serviços'} no carrinho</h2>
             <p className="mb-6" style={{ color: bodyColor }}>
-              Total: <span className="text-sky-300 font-black text-2xl">R$ {cart.reduce((acc, item) => acc + item.price, 0).toFixed(2)}</span>
+              Total: <span className="font-black text-2xl" style={{ color: accentColor }}>R$ {cart.reduce((acc, item) => acc + item.price, 0).toFixed(2)}</span>
             </p>
             <Link
               href="/checkout"

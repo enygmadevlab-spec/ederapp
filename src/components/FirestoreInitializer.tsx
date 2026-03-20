@@ -1,11 +1,17 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { initializeFirestoreProducts } from '@/lib/initializeFirestore';
 
 export function FirestoreInitializer() {
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    // Inicializa Firestore com serviços padrão na primeira carga
-    initializeFirestoreProducts();
+    if (initializedRef.current) {
+      return;
+    }
+
+    initializedRef.current = true;
+    void initializeFirestoreProducts();
   }, []);
 
   return null; // Componente invisível, apenas executa o efeito

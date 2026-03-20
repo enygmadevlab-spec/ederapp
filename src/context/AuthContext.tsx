@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -13,12 +13,26 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const USER_ROLES: UserRole[] = ['client', 'admin', 'employee'];
+
+function normalizeUserRole(value: unknown): UserRole {
+  return typeof value === 'string' && USER_ROLES.includes(value as UserRole)
+    ? (value as UserRole)
+    : 'client';
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth || !db) {
+      console.error('Firebase indisponível para autenticação.');
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -31,7 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               id: firebaseUser.uid,
               name: userData.name || firebaseUser.displayName || 'Usuário',
               email: firebaseUser.email || '',
-              role: (userData.role as any) || 'client'
+              role: normalizeUserRole(userData.role),
             });
           } else {
             const newUser: User = {
@@ -62,12 +76,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const logout = async () => {
+    if (!auth) {
+      return;
+    }
     await firebaseSignOut(auth);
     setUser(null);
   };
 
   const updateProfile = async (patch: Partial<User>) => {
-    if (!user) return;
+    if (!user || !db) return;
     try {
       const userDocRef = doc(db, "users", user.id);
       await setDoc(userDocRef, patch, { merge: true });

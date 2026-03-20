@@ -5,6 +5,7 @@ import { RefreshCcw, Save } from 'lucide-react';
 import { HomePageRenderer } from '@/components/HomePageRenderer';
 import { DEFAULT_SERVICES } from '@/lib/defaultServices';
 import { createDefaultLayout, hexToRgb, mergeLayoutWithDefaults } from '@/lib/defaultLayout';
+import { useTheme } from '@/context/ThemeContext';
 import { HomePageLayoutSettings, LayoutEditConfig, ServiceProduct } from '@/types';
 
 interface LayoutEditorProps {
@@ -23,12 +24,12 @@ function EditorSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-sky-500/20 bg-slate-950/80 p-5 shadow-[0_12px_40px_rgba(2,12,27,0.35)]">
-      <div className="mb-4">
-        <h3 className="text-base font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm text-slate-400">{description}</p>
+    <section className="rounded-[24px] border border-sky-500/20 bg-slate-950/80 p-4 shadow-[0_10px_30px_rgba(2,12,27,0.28)] sm:p-5">
+      <div className="mb-3">
+        <h3 className="text-sm font-bold text-white sm:text-base">{title}</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">{description}</p>
       </div>
-      <div className="space-y-4">{children}</div>
+      <div className="space-y-3.5">{children}</div>
     </section>
   );
 }
@@ -46,13 +47,15 @@ function TextField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-200">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-200 sm:text-sm sm:tracking-[0.16em]">
+        {label}
+      </span>
       <input
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10"
+        className="w-full rounded-[18px] border border-sky-500/20 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10 sm:px-4 sm:py-3"
       />
     </label>
   );
@@ -71,12 +74,14 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-200">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-200 sm:text-sm sm:tracking-[0.16em]">
+        {label}
+      </span>
       <textarea
         value={value}
         rows={rows}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10"
+        className="w-full rounded-[18px] border border-sky-500/20 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10 sm:px-4 sm:py-3"
       />
     </label>
   );
@@ -97,14 +102,16 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-200">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-200 sm:text-sm sm:tracking-[0.16em]">
+        {label}
+      </span>
       <input
         type="number"
         min={min}
         max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10"
+        className="w-full rounded-[18px] border border-sky-500/20 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10 sm:px-4 sm:py-3"
       />
     </label>
   );
@@ -125,28 +132,31 @@ function ColorField({
 
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-200">{label}</span>
-      <div className="flex items-center gap-3">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-200 sm:text-sm sm:tracking-[0.16em]">
+        {label}
+      </span>
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <input
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="flex-1 rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10"
+          className="flex-1 rounded-[18px] border border-sky-500/20 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-sky-400/60 focus:bg-white/10 sm:px-4 sm:py-3"
         />
         <input
           type="color"
           value={isHexColor ? value : '#020c1b'}
           onChange={(event) => onChange(event.target.value)}
           disabled={!isHexColor}
-          className="h-11 w-14 rounded-xl border border-sky-500/20 bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-10 w-12 rounded-xl border border-sky-500/20 bg-transparent disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-14"
         />
       </div>
-      {helperText ? <p className="mt-2 text-xs text-slate-500">{helperText}</p> : null}
+      {helperText ? <p className="mt-1.5 text-xs leading-5 text-slate-500">{helperText}</p> : null}
     </label>
   );
 }
 
 export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutEditorProps) {
+  const { theme } = useTheme();
   const normalizedInitialLayout = useMemo(
     () => mergeLayoutWithDefaults(initialLayout),
     [initialLayout]
@@ -162,6 +172,19 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(normalizedInitialLayout);
   const servicesForPreview = previewServices && previewServices.length > 0 ? previewServices : DEFAULT_SERVICES;
+  const isLightTheme = theme === 'light';
+  const panelClassName = isLightTheme
+    ? 'rounded-[30px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6'
+    : 'rounded-[30px] border border-sky-500/20 bg-gradient-to-br from-slate-950 to-[#041225] p-5 shadow-[0_18px_60px_rgba(2,12,27,0.45)] sm:p-6';
+  const previewHeaderClassName = isLightTheme
+    ? 'rounded-[24px] border border-slate-200/90 bg-white/95 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:p-5'
+    : 'rounded-[24px] border border-sky-500/20 bg-slate-950/80 p-4 shadow-[0_12px_40px_rgba(2,12,27,0.3)] sm:p-5';
+  const previewShellClassName = isLightTheme
+    ? 'rounded-[30px] border border-slate-200/90 bg-white/95 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-4'
+    : 'rounded-[30px] border border-sky-500/20 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(2,12,27,0.45)] sm:p-4';
+  const previewFrameClassName = isLightTheme
+    ? 'overflow-auto rounded-[24px] border border-slate-200 bg-slate-50'
+    : 'overflow-auto rounded-[24px] border border-white/5 bg-black/30';
 
   const updateRootField = <K extends keyof LayoutEditConfig>(field: K, value: LayoutEditConfig[K]) => {
     setDraft((current) => mergeLayoutWithDefaults({ ...current, [field]: value }));
@@ -223,19 +246,19 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[420px,minmax(0,1fr)]">
-      <div className="space-y-5 xl:sticky xl:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
-        <section className="rounded-[32px] border border-sky-500/20 bg-gradient-to-br from-slate-950 to-[#041225] p-6 shadow-[0_18px_60px_rgba(2,12,27,0.45)]">
+    <div className="grid gap-5 2xl:grid-cols-[minmax(340px,380px),minmax(0,1fr)]">
+      <div className="space-y-4 self-start pr-1 2xl:sticky 2xl:top-24 2xl:max-h-[calc(100vh-7rem)] 2xl:overflow-y-auto">
+        <section className={panelClassName}>
           <div className="mb-5">
-            <p className="text-xs uppercase tracking-[0.3em] text-sky-300">Layout Profissional</p>
-            <h2 className="mt-3 text-2xl font-black text-white">Editor da Página Inicial</h2>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-sky-300">Layout Profissional</p>
+            <h2 className="mt-3 text-xl font-black text-white sm:text-2xl">Editor da Página Inicial</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
               Este preview usa o mesmo componente da home publicada. Tudo o que você alterar aqui aparece
               igual no site ao salvar.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <TextField
               label="Nome interno do layout"
               value={draft.name}
@@ -249,12 +272,12 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
             />
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:py-3"
             >
               <Save className="h-4 w-4" />
               {saving ? 'Salvando...' : 'Salvar alterações'}
@@ -262,7 +285,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
             <button
               type="button"
               onClick={handleRestoreDefaults}
-              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-white/5 px-5 py-3 text-sm font-semibold text-sky-200 transition hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-white/5 px-4 py-2.5 text-sm font-semibold text-sky-200 transition hover:bg-white/10 sm:px-5 sm:py-3"
             >
               <RefreshCcw className="h-4 w-4" />
               Restaurar padrão
@@ -321,7 +344,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
             value={draft.homepage.hero.description}
             onChange={(value) => updateHomepageSection('hero', { description: value })}
           />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <TextField
               label="Texto do botão principal"
               value={draft.homepage.hero.primaryButtonText}
@@ -364,7 +387,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
             value={draft.homepage.services.description}
             onChange={(value) => updateHomepageSection('services', { description: value })}
           />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <TextField
               label="Badge do card"
               value={draft.homepage.services.highlightBadgeText}
@@ -417,7 +440,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
             value={draft.homepage.cta.contactLabel}
             onChange={(value) => updateHomepageSection('cta', { contactLabel: value })}
           />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <TextField
               label="Telefone"
               value={draft.homepage.cta.phoneNumber}
@@ -445,7 +468,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
           title="Cores do Hero"
           description="Paleta principal do topo da página e dos botões iniciais."
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ColorField
               label="Fundo geral da página"
               value={draft.homepage.theme.pageBackground}
@@ -545,7 +568,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
           title="Cores do Catálogo"
           description="Controle dos cards, navegação do carrossel e textos da seção."
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ColorField
               label="Brilho superior da seção"
               value={draft.homepage.theme.sectionGlowTop}
@@ -719,7 +742,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
           title="Cores do CTA"
           description="Paleta do bloco final e da caixa de contato."
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ColorField
               label="Brilho do CTA"
               value={draft.homepage.theme.ctaGlow}
@@ -785,7 +808,7 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
           title="Tipografia e Tamanhos"
           description="Ajuste os tamanhos dos textos principais para refinar o visual."
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <NumberField
               label="Hero - badge"
               value={draft.homepage.typography.heroBadgeSize}
@@ -945,16 +968,24 @@ export function LayoutEditor({ initialLayout, previewServices, onSave }: LayoutE
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-[28px] border border-sky-500/20 bg-slate-950/80 p-5">
-          <h3 className="text-lg font-bold text-white">Preview em Tempo Real</h3>
-          <p className="mt-1 text-sm text-slate-400">
-            Render desktop completo. O site público usa esta mesma estrutura visual e estes mesmos dados.
-          </p>
+        <div className={previewHeaderClassName}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-sky-300">Preview em Tempo Real</p>
+              <h3 className="mt-2 text-lg font-bold text-white sm:text-xl">Render idêntico ao site publicado</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Estrutura, textos, cores e tamanhos reagem na hora, com uma prévia mais compacta para telas menores.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-2.5 text-sm text-slate-300">
+              {servicesForPreview.length} serviço(s) na prévia
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-[32px] border border-sky-500/20 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(2,12,27,0.45)]">
-          <div className="overflow-auto rounded-[28px] border border-white/5 bg-black/30">
-            <div className="min-w-[1320px]">
+        <div className={previewShellClassName}>
+          <div className={previewFrameClassName}>
+            <div className="min-w-[900px] xl:min-w-[1040px] 2xl:min-w-0">
               <HomePageRenderer layout={draft} services={servicesForPreview} previewMode />
             </div>
           </div>

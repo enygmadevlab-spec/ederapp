@@ -124,6 +124,22 @@ export function HomePageRenderer({
   }, [previewMode, services.length]);
 
   const safeActiveSlide = services.length === 0 ? 0 : Math.min(activeSlide, services.length - 1);
+  const isCompactPreview = previewMode;
+  const sliderHeightClass = isCompactPreview ? 'h-[430px] sm:h-[460px]' : 'h-[500px]';
+  const heroSectionClassName = isCompactPreview
+    ? 'relative min-h-[78vh] flex items-center justify-center overflow-hidden'
+    : 'relative min-h-[90vh] flex items-center justify-center overflow-hidden';
+  const catalogSectionClassName = isCompactPreview ? 'py-24 relative overflow-hidden' : 'py-32 relative overflow-hidden';
+  const ctaSectionClassName = isCompactPreview ? 'relative py-24 overflow-hidden' : 'relative py-32 overflow-hidden';
+  const cardImageClassName = isCompactPreview ? 'h-44 relative overflow-hidden group' : 'h-48 relative overflow-hidden group';
+  const cardBodyClassName = isCompactPreview ? 'p-5 flex-grow flex flex-col backdrop-blur-md' : 'p-6 flex-grow flex flex-col backdrop-blur-md';
+  const docsPanelClassName = isCompactPreview ? 'mb-5 rounded-xl border p-3.5' : 'mb-6 p-4 rounded-xl border';
+  const ctaContactClassName = isCompactPreview
+    ? 'inline-block rounded-2xl mb-10 px-8 py-7 backdrop-blur-xl transition-all duration-300 border shadow-[0_0_40px_rgba(14,165,233,0.12)] sm:px-10 sm:py-8'
+    : 'inline-block px-12 py-10 rounded-2xl mb-12 backdrop-blur-xl transition-all duration-300 border shadow-[0_0_40px_rgba(14,165,233,0.12)]';
+  const ctaButtonClassName = isCompactPreview
+    ? 'inline-flex items-center justify-center rounded-xl px-12 py-4 font-bold transition-all duration-300 hover:-translate-y-1 shadow-[0_0_25px_rgba(14,165,233,0.20)]'
+    : 'inline-flex items-center justify-center px-14 py-5 rounded-xl font-bold transition-all hover:-translate-y-1 duration-300 shadow-[0_0_25px_rgba(14,165,233,0.20)]';
 
   const handlePreviewLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (previewMode) {
@@ -162,8 +178,10 @@ export function HomePageRenderer({
     const total = services.length;
     const distance = index - safeActiveSlide;
     const isActive = index === safeActiveSlide;
-    const xOffset = distance * 110;
-    const scale = isActive ? 1 : Math.max(0.8 - Math.abs(distance) * 0.1, 0.6);
+    const xOffset = distance * (isCompactPreview ? 96 : 110);
+    const scale = isActive
+      ? 1
+      : Math.max((isCompactPreview ? 0.84 : 0.8) - Math.abs(distance) * 0.1, isCompactPreview ? 0.64 : 0.6);
     const rotateY = isActive ? 0 : distance * -15;
     const zIndex = total - Math.abs(distance);
     const opacity = Math.max(1 - Math.abs(distance) * 0.3, 0);
@@ -180,7 +198,7 @@ export function HomePageRenderer({
       right: '0',
       margin: '0 auto',
       width: '100%',
-      maxWidth: '350px',
+      maxWidth: isCompactPreview ? '320px' : '350px',
       pointerEvents: isActive ? 'auto' : 'none',
     };
   };
@@ -194,7 +212,7 @@ export function HomePageRenderer({
 
   return (
     <div className="flex flex-col overflow-x-hidden" style={{ backgroundColor: theme.pageBackground }}>
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className={heroSectionClassName}>
         <div className="absolute inset-0 z-0">
           <img
             src={hero.backgroundImageUrl}
@@ -214,7 +232,11 @@ export function HomePageRenderer({
           </div>
         </div>
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center animate-fade-in pb-20">
+        <div
+          className={`relative z-10 mx-auto px-4 text-center animate-fade-in sm:px-6 lg:px-8 ${
+            isCompactPreview ? 'max-w-5xl pb-16' : 'max-w-6xl pb-20'
+          }`}
+        >
           <div
             className="inline-block px-6 py-2 rounded-full border backdrop-blur-md mb-8 shadow-[0_0_20px_rgba(14,165,233,0.25)] transition-all duration-500"
             style={{
@@ -253,7 +275,7 @@ export function HomePageRenderer({
           </h1>
 
           <p
-            className="mb-12 max-w-3xl mx-auto leading-relaxed font-medium"
+            className={`mx-auto max-w-3xl leading-relaxed font-medium ${isCompactPreview ? 'mb-10' : 'mb-12'}`}
             style={{
               color: theme.heroDescriptionText,
               fontSize: `${typography.heroDescriptionSize}px`,
@@ -262,11 +284,13 @@ export function HomePageRenderer({
             {hero.description}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className={`flex flex-col justify-center ${isCompactPreview ? 'gap-4 sm:flex-row' : 'gap-6 sm:flex-row'}`}>
             <Link
               href={hero.primaryButtonHref}
               onClick={handlePreviewLink}
-              className="inline-flex items-center justify-center px-10 py-4 rounded-xl font-bold transition-all shadow-[0_0_25px_rgba(14,165,233,0.25)] hover:scale-110 duration-300"
+              className={`inline-flex items-center justify-center rounded-xl font-bold transition-all shadow-[0_0_25px_rgba(14,165,233,0.25)] duration-300 hover:scale-110 ${
+                isCompactPreview ? 'px-8 py-3.5' : 'px-10 py-4'
+              }`}
               style={{
                 background: primaryButtonGradient,
                 color: theme.heroPrimaryButtonText,
@@ -279,7 +303,9 @@ export function HomePageRenderer({
             <Link
               href={hero.secondaryButtonHref}
               onClick={handlePreviewLink}
-              className="inline-flex items-center justify-center px-10 py-4 rounded-xl font-bold backdrop-blur-md transition-all hover:scale-105 duration-300 border"
+              className={`inline-flex items-center justify-center rounded-xl border font-bold backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+                isCompactPreview ? 'px-8 py-3.5' : 'px-10 py-4'
+              }`}
               style={{
                 backgroundColor: theme.heroSecondaryButtonBackground,
                 borderColor: theme.heroSecondaryButtonBorder,
@@ -295,7 +321,7 @@ export function HomePageRenderer({
         <div className="waves-container" />
       </section>
 
-      <section className="py-32 relative overflow-hidden">
+      <section className={catalogSectionClassName}>
         <div
           className="absolute -top-40 -right-40 w-[800px] h-[800px] rounded-full blur-[150px] pointer-events-none"
           style={{ backgroundColor: theme.sectionGlowTop }}
@@ -305,7 +331,7 @@ export function HomePageRenderer({
           style={{ backgroundColor: theme.sectionGlowBottom }}
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-20">
+          <div className={`text-center ${isCompactPreview ? 'mb-16' : 'mb-20'}`}>
             <span
               className="font-bold tracking-[0.3em] uppercase mb-3 block"
               style={{
@@ -337,7 +363,7 @@ export function HomePageRenderer({
           </div>
 
           {services.length > 0 ? (
-            <div className="relative h-[500px] flex items-center justify-center perspective-container">
+            <div className={`relative flex items-center justify-center perspective-container ${sliderHeightClass}`}>
               <button
                 type="button"
                 onClick={prevSlide}
@@ -363,7 +389,7 @@ export function HomePageRenderer({
                 <ChevronRight className="h-8 w-8 group-hover:scale-110 transition-transform" />
               </button>
 
-              <div className="relative w-full max-w-4xl h-full flex items-center justify-center">
+              <div className={`relative h-full w-full flex items-center justify-center ${isCompactPreview ? 'max-w-[920px]' : 'max-w-4xl'}`}>
                 {services.map((service, index) => {
                   if (Math.abs(index - safeActiveSlide) > 2) {
                     return null;
@@ -379,7 +405,7 @@ export function HomePageRenderer({
                       className="rounded-3xl overflow-hidden shadow-2xl border backdrop-blur-xl"
                     >
                       <div className="relative h-full flex flex-col">
-                        <div className="h-48 relative overflow-hidden group">
+                        <div className={cardImageClassName}>
                           <div
                             className="absolute inset-0 z-10"
                             style={{
@@ -403,10 +429,7 @@ export function HomePageRenderer({
                           </div>
                         </div>
 
-                        <div
-                          className="p-6 flex-grow flex flex-col backdrop-blur-md"
-                          style={{ backgroundColor: theme.cardBackground }}
-                        >
+                        <div className={cardBodyClassName} style={{ backgroundColor: theme.cardBackground }}>
                           <h3
                             className="font-bold mb-2 leading-tight"
                             style={{
@@ -417,7 +440,7 @@ export function HomePageRenderer({
                             {service.title}
                           </h3>
                           <p
-                            className="line-clamp-3 mb-6 leading-relaxed"
+                            className={`line-clamp-3 leading-relaxed ${isCompactPreview ? 'mb-5' : 'mb-6'}`}
                             style={{
                               color: theme.cardDescriptionText,
                               fontSize: `${typography.cardDescriptionSize}px`,
@@ -427,7 +450,7 @@ export function HomePageRenderer({
                           </p>
 
                           <div
-                            className="mb-6 p-4 rounded-xl border"
+                            className={docsPanelClassName}
                             style={{
                               backgroundColor: theme.cardDocsPanelBackground,
                               borderColor: theme.cardDocsPanelBorder,
@@ -471,7 +494,7 @@ export function HomePageRenderer({
                           </div>
 
                           <div className="mt-auto">
-                            <div className="flex items-end justify-between mb-4">
+                            <div className={`flex items-end justify-between ${isCompactPreview ? 'mb-3.5' : 'mb-4'}`}>
                               <div>
                                 <p
                                   className="uppercase font-semibold mb-1"
@@ -495,11 +518,11 @@ export function HomePageRenderer({
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={`grid grid-cols-2 ${isCompactPreview ? 'gap-2.5' : 'gap-3'}`}>
                               <Link
                                 href="/services"
                                 onClick={handlePreviewLink}
-                                className="block text-center py-2.5 rounded-xl transition-colors border"
+                                className={`block rounded-xl border text-center transition-colors ${isCompactPreview ? 'py-2' : 'py-2.5'}`}
                                 style={{
                                   backgroundColor: theme.cardSecondaryButtonBackground,
                                   borderColor: theme.cardSecondaryButtonBorder,
@@ -514,7 +537,9 @@ export function HomePageRenderer({
                                 type="button"
                                 onClick={() => handleAdd(service)}
                                 disabled={previewMode}
-                                className="flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all disabled:cursor-default"
+                                className={`flex items-center justify-center gap-2 rounded-xl transition-all disabled:cursor-default ${
+                                  isCompactPreview ? 'py-2' : 'py-2.5'
+                                }`}
                                 style={{
                                   background: cardPrimaryButtonGradient,
                                   color: theme.cardPrimaryButtonText,
@@ -574,7 +599,7 @@ export function HomePageRenderer({
         </div>
       </section>
 
-      <section className="relative py-32 overflow-hidden">
+      <section className={ctaSectionClassName}>
         <div
           className="absolute -top-40 right-0 w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none"
           style={{ backgroundColor: theme.ctaGlow }}
@@ -590,7 +615,7 @@ export function HomePageRenderer({
             {cta.title}
           </h2>
           <p
-            className="mb-14 max-w-2xl mx-auto leading-relaxed"
+            className={`mx-auto max-w-2xl leading-relaxed ${isCompactPreview ? 'mb-10' : 'mb-14'}`}
             style={{
               color: theme.ctaDescriptionText,
               fontSize: `${typography.ctaDescriptionSize}px`,
@@ -600,7 +625,7 @@ export function HomePageRenderer({
           </p>
 
           <div
-            className="inline-block px-12 py-10 rounded-2xl mb-12 backdrop-blur-xl transition-all duration-300 border shadow-[0_0_40px_rgba(14,165,233,0.12)]"
+            className={ctaContactClassName}
             style={{
               backgroundColor: theme.ctaContactBackground,
               borderColor: theme.ctaContactBorder,
@@ -639,7 +664,7 @@ export function HomePageRenderer({
             <Link
               href={cta.buttonHref}
               onClick={handlePreviewLink}
-              className="inline-flex items-center justify-center px-14 py-5 rounded-xl font-bold transition-all hover:-translate-y-1 duration-300 shadow-[0_0_25px_rgba(14,165,233,0.20)]"
+              className={ctaButtonClassName}
               style={{
                 background: ctaButtonGradient,
                 color: theme.ctaButtonText,

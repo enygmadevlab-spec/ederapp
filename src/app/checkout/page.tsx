@@ -14,7 +14,7 @@ export default function CheckoutPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-32 text-center text-white">
+      <div className="theme-workspace theme-workspace-shell max-w-4xl mx-auto px-4 py-32 text-center text-white">
         <div className="inline-block p-6 rounded-full bg-slate-800/50 backdrop-blur mb-6">
           <AlertCircle className="h-12 w-12 text-slate-400" />
         </div>
@@ -57,7 +57,7 @@ export default function CheckoutPage() {
   const total = cart.reduce((acc, item) => acc + item.price, 0);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-12 animate-fade-in">
+    <div className="theme-workspace theme-workspace-shell max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-12 animate-fade-in">
       <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-8">📋 Finalizar Solicitação</h1>
 
       {error && (
@@ -171,7 +171,7 @@ export default function CheckoutPage() {
                   name="paymentMethod"
                   value={method}
                   checked={paymentMethod === method}
-                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  onChange={() => setPaymentMethod(method)}
                   className="sr-only"
                 />
                 <div className={`p-4 rounded-lg border-2 transition-all text-center font-semibold ${
