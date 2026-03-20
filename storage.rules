@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper to fetch role from Firestore (Requires Firestore integration in rules)
+    // Simplified for standard storage rules:
+    
+    // Path: users/{userId}/orders/{orderId}/{itemId}/{filename}
+    match /users/{userId}/orders/{orderId}/{itemId}/{fileName} {
+      
+      // Read: Owner or Staff (In production, staff verification via custom claims is recommended for storage performance)
+      // Here we assume strict owner access. Staff would need admin SDK or specific custom claims.
+      allow read: if request.auth != null && (request.auth.uid == userId);
+      
+      // Write: Only the owner can upload to their specific path
+      allow write: if request.auth != null && request.auth.uid == userId && request.resource.size < 10 * 1024 * 1024; // 10MB Limit
+    }
+  }
+}

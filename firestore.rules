@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check roles
+    function hasRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // USERS COLLECTION
+    // Users can read/write their own profile.
+    // Admins can read/write all profiles.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || hasRole('admin') || hasRole('employee'));
+      allow write: if isSignedIn() && (isOwner(userId) || hasRole('admin'));
+    }
+
+    // ORDERS COLLECTION
+    // Users can read/create their own orders.
+    // Employees and Admins can read/update all orders.
+    match /orders/{orderId} {
+      // Create: User must be signed in and set userId to their own uid
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Read: Owner or Staff
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || hasRole('admin') || hasRole('employee'));
+      
+      // Update: Staff can update status. Users cannot update order after creation (for this logic)
+      allow update: if isSignedIn() && (hasRole('admin') || hasRole('employee'));
+    }
+  }
+}
