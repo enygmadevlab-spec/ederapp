@@ -16,6 +16,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const isLightTheme = theme === 'light';
+  const activeTheme = mounted ? theme : 'light';
+  const nextThemeLabel = activeTheme === 'light' ? 'Modo Noturno' : 'Modo Claro';
   const navHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-sky-300';
   const iconHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-sky-400';
   const footerHoverClassName = isLightTheme ? 'hover:text-sky-700' : 'hover:text-blue-400';
@@ -75,8 +77,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 className="theme-toggle flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
                 aria-label="Alternar modo claro e escuro"
               >
-                {mounted && theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                <span>{mounted && theme === 'light' ? 'Modo Noturno' : 'Modo Claro'}</span>
+                {activeTheme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                <span>{nextThemeLabel}</span>
               </button>
 
               {(!user || user.role === 'client') && (
@@ -119,7 +121,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   }}
                   className="theme-toggle mt-2 w-full rounded-md px-3 py-3 text-left text-base font-semibold"
                 >
-                  {mounted && theme === 'light' ? 'Modo Noturno' : 'Modo Claro'}
+                  {nextThemeLabel}
                 </button>
              </div>
           </div>
