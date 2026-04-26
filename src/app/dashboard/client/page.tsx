@@ -896,7 +896,7 @@ export default function ClientDashboard() {
                             })}
                           </div>
                           <p className="text-xs text-slate-400 mt-4 p-3 bg-white/5 rounded-lg">
-                            💡 Preencha o nome completo, selecione um arquivo ou tire uma foto e clique em "Enviar Documento".
+                            💡 Preencha o nome completo, selecione um arquivo ou tire uma foto e clique em &quot;Enviar Documento&quot;.
                           </p>
                         </div>
                       </div>

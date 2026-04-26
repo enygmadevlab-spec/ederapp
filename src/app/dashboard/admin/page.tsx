@@ -7,11 +7,12 @@ import { BusinessSegment, Order, Product, OrderItem, LayoutEditConfig, ProductCa
 import { 
   BarChart3, Package, ShoppingCart, TrendingUp, LogOut, Menu, X,
   CheckCircle, Clock, AlertCircle, Loader2, Search, Plus, FileText,
-  DollarSign, ArrowUpRight, ArrowDownLeft, Users, Palette
+  DollarSign, ArrowUpRight, ArrowDownLeft, Users, Palette, CalendarDays
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { LayoutEditor } from '@/components/LayoutEditor';
+import { AdminAgendaTab } from '@/components/admin/AdminAgendaTab';
 import { DEFAULT_SERVICES } from '@/lib/defaultServices';
 import {
   BUSINESS_COLLECTIONS,
@@ -24,7 +25,7 @@ import {
 } from '@/lib/businessSegments';
 import { createDefaultLayout, mergeLayoutWithDefaults } from '@/lib/defaultLayout';
 
-type AdminTab = 'dashboard' | 'orders' | 'completed' | 'products' | 'docsProducts' | 'stats' | 'layout';
+type AdminTab = 'dashboard' | 'orders' | 'completed' | 'products' | 'docsProducts' | 'agenda' | 'stats' | 'layout';
 
 interface User {
   id: string;
@@ -66,7 +67,7 @@ function createEmptyProductForm(segment: BusinessSegment): ProductFormData {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,8 +92,20 @@ export default function AdminDashboard() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [currentLayout, setCurrentLayout] = useState<LayoutEditConfig>(createDefaultLayout());
   const [layoutLoading, setLayoutLoading] = useState(false);
-  const { user: adminUser } = useAuth();
+  const { user: adminUser, logout } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(min-width: 1280px)');
+    const applySidebarState = () => setSidebarOpen(mediaQuery.matches);
+
+    applySidebarState();
+    mediaQuery.addEventListener('change', applySidebarState);
+
+    return () => mediaQuery.removeEventListener('change', applySidebarState);
+  }, []);
 
   // Verificar se é admin
   useEffect(() => {
@@ -308,6 +321,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 
@@ -584,6 +598,8 @@ export default function AdminDashboard() {
     );
   }
 
+  const shouldShowGlobalSearch = activeTab === 'orders' || activeTab === 'completed';
+
   return (
     <div className="theme-workspace theme-workspace-shell flex h-screen overflow-hidden">
       {/* Sidebar */}
@@ -606,6 +622,7 @@ export default function AdminDashboard() {
             { id: 'completed' as AdminTab, label: 'Vendas Finalizadas', icon: CheckCircle },
             { id: 'products' as AdminTab, label: 'Produtos Náuticos', icon: Package },
             { id: 'docsProducts' as AdminTab, label: 'Docs PVC', icon: FileText },
+            { id: 'agenda' as AdminTab, label: 'Agenda CRM', icon: CalendarDays },
             { id: 'layout' as AdminTab, label: 'Layout Editor', icon: Palette },
             { id: 'stats' as AdminTab, label: 'Estatísticas', icon: TrendingUp },
           ].map(({ id, label, icon: Icon }) => (
@@ -652,19 +669,22 @@ export default function AdminDashboard() {
             {activeTab === 'completed' && '✅ Vendas Finalizadas'}
             {activeTab === 'products' && '🛥️ Produtos Náuticos'}
             {activeTab === 'docsProducts' && '💳 Docs PVC'}
+            {activeTab === 'agenda' && '🗓️ Agenda de Clientes'}
             {activeTab === 'layout' && '🎨 Layout Editor'}
             {activeTab === 'stats' && '📈 Estatísticas'}
           </h2>
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white/10 border border-sky-500/30 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400"
-            />
-          </div>
+          {shouldShowGlobalSearch && (
+            <div className="relative w-full md:w-auto">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-sky-500/30 bg-white/10 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none md:w-[280px]"
+              />
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -908,7 +928,7 @@ export default function AdminDashboard() {
                         <Package className="h-12 w-12 mx-auto text-slate-500 mb-4" />
                         <p className="text-slate-400">Nenhum {managedEntitySingular} cadastrado</p>
                         <p className="text-sm text-slate-500 mt-2">
-                          Clique em "{productSegmentForTab === 'docs' ? 'Novo Doc PVC' : 'Novo Produto'}" para começar
+                          Clique em &quot;{productSegmentForTab === 'docs' ? 'Novo Doc PVC' : 'Novo Produto'}&quot; para começar
                         </p>
                       </div>
                     ) : (
@@ -1126,6 +1146,9 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+
+            {/* Layout Editor Tab */}
+            {activeTab === 'agenda' && <AdminAgendaTab />}
 
             {/* Layout Editor Tab */}
             {activeTab === 'layout' && (

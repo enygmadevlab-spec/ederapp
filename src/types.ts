@@ -1,6 +1,7 @@
 export type UserRole = 'client' | 'admin' | 'employee';
 export type BusinessSegment = 'nautica' | 'docs';
 export type ProductCategory = 'insurance' | 'license' | 'bureaucracy';
+export type AgendaClientStatus = 'novo' | 'em_contato' | 'aguardando' | 'convertido' | 'pausado';
 
 export interface User {
   id: string;
@@ -70,6 +71,23 @@ export interface Order {
     paidAt?: string;
     transactionId?: string;
   };
+}
+
+export interface AgendaClient {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  document?: string;
+  city?: string;
+  source?: string;
+  serviceInterest?: string;
+  segmentInterest?: BusinessSegment | 'ambos';
+  status: AgendaClientStatus;
+  scheduledFor?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Layout Editor Types

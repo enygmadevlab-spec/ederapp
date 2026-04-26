@@ -61,6 +61,10 @@ html, body, #root {
   height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -69,6 +73,37 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   transition: background-color 0.25s ease, color 0.25s ease;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+[role='button'],
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 /* Glassmorphism Utilities */
@@ -147,6 +182,40 @@ body {
 
 .theme-toggle:hover {
   transform: translateY(-1px);
+}
+
+.safe-pb {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+.safe-pt {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+}
+
+.app-shell {
+  width: min(100%, 1280px);
+  margin-inline: auto;
+}
+
+.responsive-section {
+  padding-inline: clamp(1rem, 2vw, 2rem);
+}
+
+@media (max-width: 640px) {
+  .glass-panel {
+    backdrop-filter: blur(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 html[data-theme='light'] .theme-workspace-shell {
