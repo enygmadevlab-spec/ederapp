@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { Upload, FileCheck, Trash2, ArrowRight, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { getCategoryBadgeText, getSegmentLabel, normalizeBusinessSegment } from '@/lib/businessSegments';
 
 export default function CheckoutPage() {
   const { cart, removeFromCart, updateItemDocument, placeOrder, isUploading } = useCart();
@@ -19,8 +20,8 @@ export default function CheckoutPage() {
           <AlertCircle className="h-12 w-12 text-slate-400" />
         </div>
         <h2 className="text-3xl font-bold mb-4">Seu carrinho está vazio</h2>
-        <button onClick={() => router.push('/services')} className="text-sky-400 hover:text-sky-300 font-medium hover:underline text-lg">
-          Voltar para serviços
+        <button onClick={() => router.push('/')} className="text-sky-400 hover:text-sky-300 font-medium hover:underline text-lg">
+          Voltar para os catálogos
         </button>
       </div>
     );
@@ -94,7 +95,7 @@ export default function CheckoutPage() {
                   <span className="truncate">{item.title}</span>
                 </h3>
                 <p className="text-sm text-slate-400 mt-1 font-medium">
-                  {item.category === 'insurance' ? '🛡️ Seguro' : item.category === 'license' ? '📜 Licença' : '📝 Documentação'}
+                  {getSegmentLabel(item.businessSegment)} • {getCategoryBadgeText(item.category, normalizeBusinessSegment(item.businessSegment))}
                 </p>
               </div>
               <div className="flex items-center gap-4 shrink-0">

@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation';
 import { ArrowRight, ChevronDown, ChevronUp, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { CartItem } from '@/types';
+import { getSegmentLabel, normalizeBusinessSegment } from '@/lib/businessSegments';
 
 interface GroupedCartItem {
   productId: string;
+  businessSegment: CartItem['businessSegment'];
   quantity: number;
   subtotal: number;
   sample: CartItem;
@@ -35,17 +37,21 @@ export function FloatingCart() {
 
   const groupedItems = useMemo<GroupedCartItem[]>(() => {
     const grouped = cart.reduce<Record<string, GroupedCartItem>>((accumulator, item) => {
-      if (!accumulator[item.id]) {
-        accumulator[item.id] = {
+      const businessSegment = normalizeBusinessSegment(item.businessSegment);
+      const groupKey = `${businessSegment}:${item.id}`;
+
+      if (!accumulator[groupKey]) {
+        accumulator[groupKey] = {
           productId: item.id,
+          businessSegment,
           quantity: 0,
           subtotal: 0,
           sample: item,
         };
       }
 
-      accumulator[item.id].quantity += 1;
-      accumulator[item.id].subtotal += item.price;
+      accumulator[groupKey].quantity += 1;
+      accumulator[groupKey].subtotal += item.price;
 
       return accumulator;
     }, {});
@@ -87,7 +93,7 @@ export function FloatingCart() {
           <div className="max-h-[360px] overflow-y-auto px-4 py-4 space-y-3">
             {groupedItems.map((item) => (
               <div
-                key={item.productId}
+                key={`${item.businessSegment}:${item.productId}`}
                 className="theme-panel-soft rounded-2xl p-3 flex items-start gap-3"
               >
                 <img
@@ -102,14 +108,14 @@ export function FloatingCart() {
                     {item.sample.title}
                   </p>
                   <p className="mt-1 text-xs theme-text-muted">
-                    R$ {item.sample.price.toFixed(2)} cada
+                    {getSegmentLabel(item.businessSegment)} • R$ {item.sample.price.toFixed(2)} cada
                   </p>
 
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="inline-flex items-center rounded-full theme-panel overflow-hidden">
                       <button
                         type="button"
-                        onClick={() => removeOneFromProduct(item.productId)}
+                        onClick={() => removeOneFromProduct(item.productId, item.businessSegment)}
                         className="px-2.5 py-1.5 theme-text-body hover:text-sky-400 transition-colors"
                         aria-label={`Diminuir quantidade de ${item.sample.title}`}
                       >

@@ -1,15 +1,16 @@
 "use client";
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { CartItem, Order, OrderItem, ServiceProduct } from '../types';
+import { BusinessSegment, CartItem, Order, OrderItem, ServiceProduct } from '../types';
 import { db, storage } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { normalizeBusinessSegment, normalizeServiceProduct } from '@/lib/businessSegments';
 
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: ServiceProduct) => void;
   removeFromCart: (cartId: string) => void;
-  removeOneFromProduct: (productId: string) => void;
+  removeOneFromProduct: (productId: string, businessSegment?: BusinessSegment) => void;
   updateItemDocument: (cartId: string, docName: string, file: File) => void;
   clearCart: () => void;
   placeOrder: (userId: string, userName: string, paymentMethod?: 'pix' | 'whatsapp' | 'card' | 'manual') => Promise<string | null>;
@@ -49,7 +50,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const parsedCart = JSON.parse(storedCart) as PersistedCartItem[];
-      setCart(parsedCart.map((item) => ({ ...item, uploadedDocs: {} })));
+      setCart(
+        parsedCart.map((item) => ({
+          ...normalizeServiceProduct(item, normalizeBusinessSegment(item.businessSegment)),
+          cartId: item.cartId,
+          uploadedDocs: {},
+        }))
+      );
     } catch (error) {
       console.error('Erro ao restaurar carrinho salvo:', error);
       window.localStorage.removeItem(CART_STORAGE_KEY);
@@ -78,7 +85,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addToCart = (product: ServiceProduct) => {
     const newItem: CartItem = {
-      ...product,
+      ...normalizeServiceProduct(product, normalizeBusinessSegment(product.businessSegment)),
       cartId: createLocalId(),
       uploadedDocs: {}
     };
@@ -89,9 +96,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCart(prev => prev.filter(item => item.cartId !== cartId));
   };
 
-  const removeOneFromProduct = (productId: string) => {
+  const removeOneFromProduct = (productId: string, businessSegment: BusinessSegment = 'nautica') => {
     setCart(prev => {
-      const indexToRemove = prev.findIndex(item => item.id === productId);
+      const normalizedSegment = normalizeBusinessSegment(businessSegment);
+      const indexToRemove = prev.findIndex(
+        (item) =>
+          item.id === productId &&
+          normalizeBusinessSegment(item.businessSegment) === normalizedSegment
+      );
 
       if (indexToRemove === -1) {
         return prev;

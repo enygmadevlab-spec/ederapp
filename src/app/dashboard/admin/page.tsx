@@ -3,19 +3,28 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Order, Product, OrderItem, LayoutEditConfig, ServiceProduct, UserRole } from '@/types';
+import { BusinessSegment, Order, Product, OrderItem, LayoutEditConfig, ProductCategory, ServiceProduct, UserRole } from '@/types';
 import { 
   BarChart3, Package, ShoppingCart, TrendingUp, LogOut, Menu, X,
   CheckCircle, Clock, AlertCircle, Loader2, Search, Plus, FileText,
-  DollarSign, ArrowUpRight, ArrowDownLeft, Users, Palette, Trash2
+  DollarSign, ArrowUpRight, ArrowDownLeft, Users, Palette
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { LayoutEditor } from '@/components/LayoutEditor';
 import { DEFAULT_SERVICES } from '@/lib/defaultServices';
+import {
+  BUSINESS_COLLECTIONS,
+  getCategoryBadgeText,
+  getCategoryOptions,
+  getSegmentLabel,
+  normalizeBusinessSegment,
+  normalizeProductCategory,
+  normalizeProductRecord,
+} from '@/lib/businessSegments';
 import { createDefaultLayout, mergeLayoutWithDefaults } from '@/lib/defaultLayout';
 
-type AdminTab = 'dashboard' | 'orders' | 'completed' | 'products' | 'stats' | 'layout';
+type AdminTab = 'dashboard' | 'orders' | 'completed' | 'products' | 'docsProducts' | 'stats' | 'layout';
 
 interface User {
   id: string;
@@ -28,7 +37,7 @@ interface ProductFormData {
   title: string;
   description: string;
   price: number;
-  category: 'insurance' | 'license' | 'bureaucracy';
+  category: ProductCategory;
   requiredDocuments: string[];
   requiredFiles: string[];
   image?: string;
@@ -42,6 +51,19 @@ interface StatCardProps {
   trend?: number;
 }
 
+function createEmptyProductForm(segment: BusinessSegment): ProductFormData {
+  return {
+    title: '',
+    description: '',
+    price: 0,
+    category: segment === 'docs' ? 'license' : 'insurance',
+    requiredDocuments: [],
+    requiredFiles: [],
+    image: '',
+    imageFile: null,
+  };
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -52,19 +74,13 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [userPromoting, setUserPromoting] = useState<Record<string, boolean>>({});
   const [products, setProducts] = useState<Product[]>([]);
+  const [docsProducts, setDocsProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [docsProductsLoading, setDocsProductsLoading] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState<ProductFormData>({
-    title: '',
-    description: '',
-    price: 0,
-    category: 'insurance',
-    requiredDocuments: [],
-    requiredFiles: [],
-    image: '',
-    imageFile: null
-  });
+  const [productFormSegment, setProductFormSegment] = useState<BusinessSegment>('nautica');
+  const [formData, setFormData] = useState<ProductFormData>(createEmptyProductForm('nautica'));
   const [newDoc, setNewDoc] = useState('');
   const [newFile, setNewFile] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -128,27 +144,60 @@ export default function AdminDashboard() {
     loadUsers();
   }, []);
 
-  // Carregar produtos
+  // Carregar produtos dos dois catálogos
   useEffect(() => {
-    const loadProducts = async () => {
-      setProductsLoading(true);
-      try {
-        const q = query(collection(db, "products"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const fetchedProducts: Product[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Product));
-          setProducts(fetchedProducts);
-          setProductsLoading(false);
-        });
-        return () => unsubscribe();
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-        setProductsLoading(false);
-      }
+    const subscribeToProducts = (
+      collectionName: string,
+      segment: BusinessSegment,
+      setItems: React.Dispatch<React.SetStateAction<Product[]>>,
+      setLoadingState: React.Dispatch<React.SetStateAction<boolean>>
+    ) => {
+      setLoadingState(true);
+
+      return onSnapshot(
+        query(collection(db, collectionName)),
+        (snapshot) => {
+          const fetchedProducts = snapshot.docs.map((document) =>
+            normalizeProductRecord(
+              { id: document.id, ...document.data() },
+              segment
+            )
+          );
+
+          setItems(fetchedProducts);
+          setLoadingState(false);
+        },
+        (error) => {
+          console.error(`Erro ao carregar ${collectionName}:`, error);
+          setItems([]);
+          setLoadingState(false);
+        }
+      );
     };
-    loadProducts();
+
+    try {
+      const unsubscribeNautica = subscribeToProducts(
+        BUSINESS_COLLECTIONS.nautica,
+        'nautica',
+        setProducts,
+        setProductsLoading
+      );
+      const unsubscribeDocs = subscribeToProducts(
+        BUSINESS_COLLECTIONS.docs,
+        'docs',
+        setDocsProducts,
+        setDocsProductsLoading
+      );
+
+      return () => {
+        unsubscribeNautica();
+        unsubscribeDocs();
+      };
+    } catch (error) {
+      console.error('Erro ao carregar catálogos:', error);
+      setProductsLoading(false);
+      setDocsProductsLoading(false);
+    }
   }, []);
 
   // Carregar layouts
@@ -227,11 +276,27 @@ export default function AdminDashboard() {
       title: product.title,
       description: product.description,
       price: product.price,
-      category: product.category,
+      category: normalizeProductCategory(product.category),
       requiredDocuments: product.requiredDocuments,
       image: product.image || DEFAULT_SERVICES[0]?.image || '',
+      businessSegment: 'nautica',
     }));
   }, [products]);
+
+  const productSegmentForTab: BusinessSegment = activeTab === 'docsProducts' ? 'docs' : 'nautica';
+  const managedProducts = productSegmentForTab === 'docs' ? docsProducts : products;
+  const managedProductsLoading = productSegmentForTab === 'docs' ? docsProductsLoading : productsLoading;
+  const managedCatalogLabel = productSegmentForTab === 'docs' ? 'Docs PVC' : 'Produtos Náuticos';
+  const managedEntitySingular = productSegmentForTab === 'docs' ? 'documento' : 'produto';
+  const formCategoryOptions = getCategoryOptions(productFormSegment);
+
+  const prepareFormForSegment = (segment: BusinessSegment) => {
+    setProductFormSegment(segment);
+    setFormData(createEmptyProductForm(segment));
+    setNewDoc('');
+    setNewFile('');
+    setEditingProduct(null);
+  };
 
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -389,17 +454,24 @@ export default function AdminDashboard() {
   };
 
   const handleSaveProduct = async () => {
-    if (!formData.title || !formData.description || formData.price <= 0 || formData.requiredDocuments.length === 0) {
+    if (
+      !formData.title ||
+      !formData.description ||
+      !Number.isFinite(formData.price) ||
+      formData.price <= 0 ||
+      formData.requiredDocuments.length === 0
+    ) {
       alert('Preencha todos os campos obrigatórios');
       return;
     }
 
     try {
       let imageUrl = formData.image;
+      const targetCollection = BUSINESS_COLLECTIONS[productFormSegment];
       
       // Upload de imagem se fornecida
       if (formData.imageFile) {
-        const storageRef = ref(storage, `products/${formData.imageFile.name}-${Date.now()}`);
+        const storageRef = ref(storage, `${targetCollection}/${formData.imageFile.name}-${Date.now()}`);
         await uploadBytes(storageRef, formData.imageFile);
         imageUrl = await getDownloadURL(storageRef);
       }
@@ -412,21 +484,22 @@ export default function AdminDashboard() {
         requiredDocuments: formData.requiredDocuments,
         requiredFiles: formData.requiredFiles,
         image: imageUrl,
+        businessSegment: productFormSegment,
         updatedAt: new Date().toISOString()
       };
 
       if (editingProduct) {
-        await updateDoc(doc(db, 'products', editingProduct.id), productData);
+        await updateDoc(doc(db, targetCollection, editingProduct.id), productData);
         alert('Produto atualizado com sucesso');
       } else {
-        await addDoc(collection(db, 'products'), {
+        await addDoc(collection(db, targetCollection), {
           ...productData,
           createdAt: new Date().toISOString()
         });
         alert('Produto criado com sucesso');
       }
 
-      resetForm();
+      prepareFormForSegment(productFormSegment);
       setShowProductForm(false);
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
@@ -434,7 +507,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteProduct = async (productId: string, imageUrl?: string) => {
+  const handleDeleteProduct = async (
+    productId: string,
+    imageUrl?: string,
+    segment: BusinessSegment = 'nautica'
+  ) => {
     if (!confirm('Tem certeza que deseja deletar este produto?')) return;
     
     try {
@@ -447,7 +524,7 @@ export default function AdminDashboard() {
         }
       }
 
-      await deleteDoc(doc(db, 'products', productId));
+      await deleteDoc(doc(db, BUSINESS_COLLECTIONS[segment], productId));
       alert('Produto deletado com sucesso');
     } catch (error) {
       console.error('Erro ao deletar produto:', error);
@@ -455,29 +532,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      price: 0,
-      category: 'insurance',
-      requiredDocuments: [],
-      requiredFiles: [],
-      image: '',
-      imageFile: null
-    });
-    setNewDoc('');
-    setNewFile('');
-    setEditingProduct(null);
+  const resetForm = (segment: BusinessSegment = productFormSegment) => {
+    prepareFormForSegment(segment);
   };
 
-  const startEditProduct = (product: Product) => {
+  const startEditProduct = (product: Product, segment: BusinessSegment) => {
+    setProductFormSegment(segment);
     setEditingProduct(product);
     setFormData({
       title: product.title,
       description: product.description,
       price: product.price,
-      category: product.category,
+      category: normalizeProductCategory(product.category),
       requiredDocuments: product.requiredDocuments,
       requiredFiles: product.requiredFiles || [],
       image: product.image,
@@ -538,7 +604,8 @@ export default function AdminDashboard() {
             { id: 'dashboard' as AdminTab, label: 'Dashboard', icon: BarChart3 },
             { id: 'orders' as AdminTab, label: 'Pedidos Pendentes', icon: ShoppingCart },
             { id: 'completed' as AdminTab, label: 'Vendas Finalizadas', icon: CheckCircle },
-            { id: 'products' as AdminTab, label: 'Produtos', icon: Package },
+            { id: 'products' as AdminTab, label: 'Produtos Náuticos', icon: Package },
+            { id: 'docsProducts' as AdminTab, label: 'Docs PVC', icon: FileText },
             { id: 'layout' as AdminTab, label: 'Layout Editor', icon: Palette },
             { id: 'stats' as AdminTab, label: 'Estatísticas', icon: TrendingUp },
           ].map(({ id, label, icon: Icon }) => (
@@ -583,7 +650,8 @@ export default function AdminDashboard() {
             {activeTab === 'dashboard' && '📊 Dashboard'}
             {activeTab === 'orders' && '📦 Pedidos Pendentes'}
             {activeTab === 'completed' && '✅ Vendas Finalizadas'}
-            {activeTab === 'products' && '🛍️ Produtos'}
+            {activeTab === 'products' && '🛥️ Produtos Náuticos'}
+            {activeTab === 'docsProducts' && '💳 Docs PVC'}
             {activeTab === 'layout' && '🎨 Layout Editor'}
             {activeTab === 'stats' && '📈 Estatísticas'}
           </h2>
@@ -731,7 +799,9 @@ export default function AdminDashboard() {
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <p className="font-semibold text-white">{item.title}</p>
-                                <p className="text-xs text-slate-400 mt-1">R$ {item.price.toFixed(2)}</p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  {getSegmentLabel(item.businessSegment)} • R$ {item.price.toFixed(2)}
+                                </p>
                               </div>
                               <div className="text-right">
                                 {item.requiredDocuments && item.requiredDocuments.length > 0 && (
@@ -795,7 +865,7 @@ export default function AdminDashboard() {
                       <div className="space-y-2 mb-4">
                         {order.items.map((item, idx) => (
                           <div key={idx} className="text-sm text-slate-300 bg-white/5 p-2 rounded">
-                            {item.title} - R$ {item.price.toFixed(2)}
+                            {item.title} - {getSegmentLabel(item.businessSegment)} - R$ {item.price.toFixed(2)}
                           </div>
                         ))}
                       </div>
@@ -805,37 +875,45 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Products Tab */}
-            {activeTab === 'products' && (
+            {/* Products Tabs */}
+            {(activeTab === 'products' || activeTab === 'docsProducts') && (
               <div className="space-y-6">
                 {!showProductForm ? (
                   <>
                     <div className="flex justify-end">
                       <button
                         onClick={() => {
-                          resetForm();
+                          resetForm(productSegmentForTab);
                           setShowProductForm(true);
                         }}
                         className="px-6 py-2 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-lg hover:from-sky-500 hover:to-blue-500 transition-all font-semibold flex items-center gap-2"
                       >
                         <Plus className="h-4 w-4" />
-                        Novo Produto
+                        {productSegmentForTab === 'docs' ? 'Novo Doc PVC' : 'Novo Produto'}
                       </button>
                     </div>
 
-                    {productsLoading ? (
+                    <div className="glass-panel p-4 rounded-xl border border-sky-500/20">
+                      <p className="text-sm text-slate-400">
+                        Catálogo ativo: <span className="font-semibold text-sky-300">{managedCatalogLabel}</span>
+                      </p>
+                    </div>
+
+                    {managedProductsLoading ? (
                       <div className="flex justify-center py-12">
                         <Loader2 className="h-8 w-8 text-sky-400 animate-spin" />
                       </div>
-                    ) : products.length === 0 ? (
+                    ) : managedProducts.length === 0 ? (
                       <div className="glass-panel p-12 text-center rounded-xl border border-sky-500/20">
                         <Package className="h-12 w-12 mx-auto text-slate-500 mb-4" />
-                        <p className="text-slate-400">Nenhum produto cadastrado</p>
-                        <p className="text-sm text-slate-500 mt-2">Clique em "Novo Produto" para começar</p>
+                        <p className="text-slate-400">Nenhum {managedEntitySingular} cadastrado</p>
+                        <p className="text-sm text-slate-500 mt-2">
+                          Clique em "{productSegmentForTab === 'docs' ? 'Novo Doc PVC' : 'Novo Produto'}" para começar
+                        </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {products.map(product => (
+                        {managedProducts.map((product) => (
                           <div key={product.id} className="glass-panel p-6 rounded-xl border border-sky-500/20 hover:border-sky-500/40 transition-all">
                             {product.image && (
                               <img src={product.image} alt={product.title} className="w-full h-40 object-cover rounded-lg mb-4" />
@@ -845,7 +923,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between mb-4">
                               <span className="text-2xl font-bold text-sky-300">R$ {product.price.toFixed(2)}</span>
                               <span className="text-xs px-2 py-1 rounded-full bg-sky-600/30 text-sky-300 border border-sky-500/30 capitalize">
-                                {product.category === 'insurance' ? 'Seguro' : product.category === 'license' ? 'Licença' : 'Documentação'}
+                                {getCategoryBadgeText(product.category, productSegmentForTab)}
                               </span>
                             </div>
                             <div className="mb-4 flex gap-2 flex-wrap">
@@ -862,13 +940,13 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => startEditProduct(product)}
+                                onClick={() => startEditProduct(product, productSegmentForTab)}
                                 className="flex-1 px-3 py-2 bg-sky-600 text-white rounded-lg text-sm hover:bg-sky-500 transition-colors"
                               >
                                 Editar
                               </button>
                               <button
-                                onClick={() => handleDeleteProduct(product.id, product.image)}
+                                onClick={() => handleDeleteProduct(product.id, product.image, productSegmentForTab)}
                                 className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-500 transition-colors"
                               >
                                 Deletar
@@ -882,7 +960,11 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="glass-panel p-8 rounded-xl border border-sky-500/20">
                     <h3 className="text-2xl font-bold text-white mb-6">
-                      {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+                      {editingProduct
+                        ? `Editar ${productFormSegment === 'docs' ? 'Documento PVC' : 'Produto'}`
+                        : productFormSegment === 'docs'
+                          ? 'Novo Documento PVC'
+                          : 'Novo Produto'}
                     </h3>
 
                     <div className="space-y-6">
@@ -898,7 +980,10 @@ export default function AdminDashboard() {
                           type="number"
                           placeholder="Preço"
                           value={formData.price}
-                          onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                          onChange={(e) => {
+                            const nextPrice = Number(e.target.value);
+                            setFormData({...formData, price: Number.isFinite(nextPrice) ? nextPrice : 0});
+                          }}
                           className="px-4 py-2 bg-white/5 border border-sky-500/20 rounded-lg text-white placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
                         />
                       </div>
@@ -916,9 +1001,9 @@ export default function AdminDashboard() {
                           onChange={(e) => setFormData({...formData, category: e.target.value as ProductFormData['category']})}
                           className="px-4 py-2 bg-white/5 border border-sky-500/20 rounded-lg text-white focus:border-sky-500 focus:outline-none"
                         >
-                          <option value="insurance">Seguro</option>
-                          <option value="license">Licença</option>
-                          <option value="bureaucracy">Documentação</option>
+                          {formCategoryOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
                         </select>
 
                         <input
@@ -945,7 +1030,7 @@ export default function AdminDashboard() {
                               if (newDoc.trim()) {
                                 setFormData({
                                   ...formData,
-                                  requiredDocuments: [...formData.requiredDocuments, newDoc]
+                                  requiredDocuments: [...formData.requiredDocuments, newDoc.trim()]
                                 });
                                 setNewDoc('');
                               }
@@ -989,7 +1074,7 @@ export default function AdminDashboard() {
                               if (newFile.trim()) {
                                 setFormData({
                                   ...formData,
-                                  requiredFiles: [...formData.requiredFiles, newFile]
+                                  requiredFiles: [...formData.requiredFiles, newFile.trim()]
                                 });
                                 setNewFile('');
                               }
@@ -1022,11 +1107,13 @@ export default function AdminDashboard() {
                           onClick={handleSaveProduct}
                           className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all font-bold"
                         >
-                          {editingProduct ? 'Atualizar Produto' : 'Criar Produto'}
+                          {editingProduct
+                            ? `Atualizar ${productFormSegment === 'docs' ? 'Documento' : 'Produto'}`
+                            : `Criar ${productFormSegment === 'docs' ? 'Documento' : 'Produto'}`}
                         </button>
                         <button
                           onClick={() => {
-                            resetForm();
+                            resetForm(productFormSegment);
                             setShowProductForm(false);
                           }}
                           className="flex-1 px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors font-bold"
@@ -1140,19 +1227,28 @@ export default function AdminDashboard() {
               <div className="glass-panel p-4 rounded-xl border border-sky-500/20">
                 <h4 className="text-sky-300 font-bold mb-3 flex items-center gap-2">
                   <Package className="h-4 w-4" />
-                  Informações do Serviço
+                  Informações do Item
                 </h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-400">Categoria</p>
+                    <p className="text-slate-400">Área</p>
                     <p className="text-white font-semibold capitalize">
-                      {selectedOrderItem.category === 'insurance' ? 'Seguro' : selectedOrderItem.category === 'license' ? 'Licença' : 'Documentação'}
+                      {getSegmentLabel(selectedOrderItem.businessSegment)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-400">Preço</p>
-                    <p className="text-white font-semibold">R$ {selectedOrderItem.price.toFixed(2)}</p>
+                    <p className="text-slate-400">Categoria</p>
+                    <p className="text-white font-semibold capitalize">
+                      {getCategoryBadgeText(
+                        selectedOrderItem.category,
+                        normalizeBusinessSegment(selectedOrderItem.businessSegment)
+                      )}
+                    </p>
                   </div>
+                </div>
+                <div className="mt-4 text-sm">
+                  <p className="text-slate-400">Preço</p>
+                  <p className="text-white font-semibold">R$ {selectedOrderItem.price.toFixed(2)}</p>
                 </div>
                 <p className="text-slate-300 text-sm mt-3">{selectedOrderItem.description}</p>
               </div>

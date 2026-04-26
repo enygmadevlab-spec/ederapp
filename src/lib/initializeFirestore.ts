@@ -1,7 +1,9 @@
 import { db } from './firebase';
 import { addDoc, collection, getDocs, query } from 'firebase/firestore';
 import { DEFAULT_SERVICES } from './defaultServices';
+import { DEFAULT_DOCS_PRODUCTS } from './defaultDocsProducts';
 import { ServiceProduct } from '@/types';
+import { BUSINESS_COLLECTIONS, normalizeBusinessSegment } from './businessSegments';
 
 let initializationPromise: Promise<void> | null = null;
 
@@ -14,9 +16,28 @@ function createProductPayload(service: ServiceProduct) {
     image: service.image,
     requiredDocuments: service.requiredDocuments,
     requiredFiles: [],
+    businessSegment: normalizeBusinessSegment(service.businessSegment),
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+}
+
+async function initializeCollection(collectionName: string, defaults: ServiceProduct[]) {
+  const productsRef = collection(db!, collectionName);
+  const snapshot = await getDocs(query(productsRef));
+
+  if (snapshot.size > 0) {
+    console.log(`✅ Firestore já contém ${snapshot.size} registros em ${collectionName}`);
+    return;
+  }
+
+  console.log(`📦 Populando ${collectionName} com serviços padrão...`);
+
+  await Promise.all(
+    defaults.map((service) => addDoc(productsRef, createProductPayload(service)))
+  );
+
+  console.log(`✅ ${defaults.length} serviços adicionados em ${collectionName}`);
 }
 
 /**
@@ -33,22 +54,9 @@ export async function initializeFirestoreProducts() {
   }
 
   initializationPromise = (async () => {
-    const productsRef = collection(db, "products");
     try {
-      const snapshot = await getDocs(query(productsRef));
-
-      if (snapshot.size > 0) {
-        console.log(`✅ Firestore já contém ${snapshot.size} produtos`);
-        return;
-      }
-
-      console.log('📦 Populando Firestore com serviços padrão...');
-
-      await Promise.all(
-        DEFAULT_SERVICES.map((service) => addDoc(productsRef, createProductPayload(service)))
-      );
-
-      console.log(`✅ ${DEFAULT_SERVICES.length} serviços adicionados ao Firestore`);
+      await initializeCollection(BUSINESS_COLLECTIONS.nautica, DEFAULT_SERVICES);
+      await initializeCollection(BUSINESS_COLLECTIONS.docs, DEFAULT_DOCS_PRODUCTS);
     } catch (error) {
       console.error('❌ Erro ao inicializar Firestore:', error);
       throw error;

@@ -46,6 +46,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link href="/services" className={`text-sm font-semibold transition-colors duration-300 ${pathname === '/services' ? 'theme-accent drop-shadow-[0_0_8px_rgba(14,165,233,0.35)]' : `theme-text-body ${navHoverClassName}`}`}>
                 🎯 Serviços
               </Link>
+              <Link href="/docs-cards" className={`text-sm font-semibold transition-colors duration-300 ${pathname === '/docs-cards' ? 'theme-accent drop-shadow-[0_0_8px_rgba(14,165,233,0.35)]' : `theme-text-body ${navHoverClassName}`}`}>
+                💳 Docs PVC
+              </Link>
 
               {user ? (
                 <>
@@ -105,6 +108,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="md:hidden theme-nav absolute w-full z-50">
              <div className="px-4 pt-2 pb-4 space-y-1">
                 <Link href="/services" onClick={() => setIsMenuOpen(false)} className="block px-3 py-3 text-base font-medium theme-text-body hover:bg-white/5 rounded-md">Serviços</Link>
+                <Link href="/docs-cards" onClick={() => setIsMenuOpen(false)} className="block px-3 py-3 text-base font-medium theme-text-body hover:bg-white/5 rounded-md">Docs PVC</Link>
                 {user ? (
                    <>
                     <Link href={`/dashboard/${user.role}`} onClick={() => setIsMenuOpen(false)} className="block px-3 py-3 text-base font-medium theme-text-body hover:bg-white/5 rounded-md">Painel</Link>

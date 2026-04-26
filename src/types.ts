@@ -1,4 +1,6 @@
 export type UserRole = 'client' | 'admin' | 'employee';
+export type BusinessSegment = 'nautica' | 'docs';
+export type ProductCategory = 'insurance' | 'license' | 'bureaucracy';
 
 export interface User {
   id: string;
@@ -13,21 +15,23 @@ export interface ServiceProduct {
   title: string;
   description: string;
   price: number;
-  category: 'insurance' | 'license' | 'bureaucracy';
+  category: ProductCategory;
   requiredDocuments: string[];
   image: string;
+  businessSegment?: BusinessSegment;
 }
 export interface Product {
   id: string;
   title: string;
   description: string;
   price: number;
-  category: 'insurance' | 'license' | 'bureaucracy';
+  category: ProductCategory;
   requiredDocuments: string[];
   requiredFiles?: string[]; // Arquivos necessários (ex: ['PDF', 'JPG', 'PNG'])
   image?: string;
   createdAt?: string;
   updatedAt?: string;
+  businessSegment?: BusinessSegment;
 }
 
 export interface CartItem extends ServiceProduct {

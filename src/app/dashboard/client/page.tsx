@@ -6,8 +6,8 @@ import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'f
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Order } from '@/types';
 import { Clock, CheckCircle, XCircle, FileText, Loader2, Package, ArrowRight, X, AlertCircle, Camera, Upload, MapPin } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getCategoryBadgeText, getSegmentLabel, normalizeBusinessSegment } from '@/lib/businessSegments';
 
 export default function ClientDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -18,7 +18,6 @@ export default function ClientDashboard() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'value_desc' | 'value_asc'>('newest');
   const [page, setPage] = useState(1);
   const perPage = 6;
-  const router = useRouter();
   const [tab, setTab] = useState<'orders' | 'settings'>('orders');
   const [selectedItemModal, setSelectedItemModal] = useState<{ orderId: string; itemIndex: number } | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({});
@@ -229,10 +228,11 @@ export default function ClientDashboard() {
     return (
       <div className="theme-workspace theme-workspace-shell max-w-4xl mx-auto px-4 py-20 text-center">
         <h2 className="text-2xl font-bold text-white mb-3">Você não está logado</h2>
-        <p className="text-slate-400 mb-6">Faça login para ver seus pedidos ou comece um novo no catálogo de serviços.</p>
+        <p className="text-slate-400 mb-6">Faça login para ver seus pedidos ou comece um novo em qualquer um dos catálogos.</p>
         <div className="flex items-center justify-center gap-3">
           <Link href="/login" className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-500 transition-colors">Entrar</Link>
           <Link href="/services" className="px-4 py-2 border border-sky-600 text-sky-300 rounded-lg hover:bg-white/5 transition-colors">Ver Serviços</Link>
+          <Link href="/docs-cards" className="px-4 py-2 border border-emerald-600 text-emerald-300 rounded-lg hover:bg-white/5 transition-colors">Ver Docs PVC</Link>
         </div>
       </div>
     );
@@ -378,11 +378,16 @@ export default function ClientDashboard() {
                 <Package className="h-10 w-10 text-slate-400" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Sem pedidos ainda</h3>
-              <p className="text-slate-400 mb-6">Você ainda não realizou nenhuma solicitação de serviço.</p>
-              <Link href="/services" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-600 to-cyan-600 text-white rounded-xl hover:from-sky-500 hover:to-cyan-500 transition-all">
-                Ir ao Catálogo
-                <ArrowRight className="h-5 w-5" />
-              </Link>
+              <p className="text-slate-400 mb-6">Você ainda não realizou nenhuma solicitação.</p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link href="/services" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-600 to-cyan-600 text-white rounded-xl hover:from-sky-500 hover:to-cyan-500 transition-all">
+                  Ir para Náutica
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link href="/docs-cards" className="inline-flex items-center gap-2 px-6 py-3 border border-emerald-500/60 text-emerald-300 rounded-xl hover:bg-white/5 transition-all">
+                  Ir para Docs PVC
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -421,7 +426,9 @@ export default function ClientDashboard() {
                           </div>
                           <div className="flex-grow">
                             <span className="text-slate-300 font-medium block">{item.title}</span>
-                            <span className="text-xs text-slate-500 mt-1">R$ {item.price.toFixed(2)}</span>
+                            <span className="text-xs text-slate-500 mt-1">
+                              {getSegmentLabel(item.businessSegment)} • {getCategoryBadgeText(item.category, normalizeBusinessSegment(item.businessSegment))} • R$ {item.price.toFixed(2)}
+                            </span>
                           </div>
                           <button
                             onClick={() => setSelectedItemModal({ orderId: order.id, itemIndex: idx })}
@@ -714,6 +721,13 @@ export default function ClientDashboard() {
                         <div className="text-lg font-bold text-sky-300">
                           {uploadedCount === totalRequired ? '✓ Completo' : '⚠️ Falta'}
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 p-4 rounded-xl border border-sky-500/20">
+                      <div className="text-sm text-slate-400 mb-1">Área do pedido</div>
+                      <div className="text-base font-bold text-white">
+                        {getSegmentLabel(item.businessSegment)} • {getCategoryBadgeText(item.category, normalizeBusinessSegment(item.businessSegment))}
                       </div>
                     </div>
 
