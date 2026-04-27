@@ -47,10 +47,16 @@ export interface DocumentMetadata {
   fileName: string;
 }
 
+export interface OrderServiceAnswer {
+  label: string;
+  value: string;
+}
+
 export interface OrderItem extends ServiceProduct {
   cartId: string;
   uploadedDocs: Record<string, string | DocumentMetadata>;
   requiredFiles?: string[]; // Tipos de arquivo aceitos
+  serviceAnswers?: OrderServiceAnswer[];
 }
 
 export interface Order {
@@ -61,6 +67,22 @@ export interface Order {
   total: number;
   status: 'pending_docs' | 'pending_payment' | 'processing' | 'paid' | 'completed' | 'rejected' | 'failed';
   date: string;
+  agendaClientId?: string;
+  businessSegment?: BusinessSegment;
+  source?: 'checkout' | 'admin_services';
+  internalNotes?: string;
+  clientSnapshot?: {
+    name: string;
+    phone?: string;
+    email?: string;
+    document?: string;
+    city?: string;
+    birthDate?: string;
+    address?: string;
+    govAccount?: string;
+    govPassword?: string;
+    source?: string;
+  };
   payment?: {
     method?: 'pix' | 'whatsapp' | 'card' | 'manual';
     status?: 'pending_payment' | 'paid' | 'failed' | 'refunded';

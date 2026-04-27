@@ -99,8 +99,12 @@ export default function HomePage() {
 
   return (
     <>
+      <BusinessSectionsCards
+        nauticaCount={services.length}
+        docsCount={docsProducts.length}
+        placement="top"
+      />
       <HomePageRenderer layout={layout} services={services} onAddToCart={addToCart} />
-      <BusinessSectionsCards nauticaCount={services.length} docsCount={docsProducts.length} />
     </>
   );
 }

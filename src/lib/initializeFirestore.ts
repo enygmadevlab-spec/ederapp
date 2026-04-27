@@ -7,6 +7,14 @@ import { BUSINESS_COLLECTIONS, normalizeBusinessSegment } from './businessSegmen
 
 let initializationPromise: Promise<void> | null = null;
 
+function normalizeTitleKey(title: string) {
+  return title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function createProductPayload(service: ServiceProduct) {
   return {
     title: service.title,
@@ -25,9 +33,30 @@ function createProductPayload(service: ServiceProduct) {
 async function initializeCollection(collectionName: string, defaults: ServiceProduct[]) {
   const productsRef = collection(db!, collectionName);
   const snapshot = await getDocs(query(productsRef));
+  const existingTitleKeys = new Set(
+    snapshot.docs
+      .map((document) => document.data().title)
+      .filter((title): title is string => typeof title === 'string' && title.trim().length > 0)
+      .map((title) => normalizeTitleKey(title))
+  );
 
   if (snapshot.size > 0) {
-    console.log(`✅ Firestore já contém ${snapshot.size} registros em ${collectionName}`);
+    const missingDefaults = defaults.filter(
+      (service) => !existingTitleKeys.has(normalizeTitleKey(service.title))
+    );
+
+    if (missingDefaults.length === 0) {
+      console.log(`✅ Firestore já contém ${snapshot.size} registros em ${collectionName}`);
+      return;
+    }
+
+    console.log(`🧩 Adicionando ${missingDefaults.length} itens novos em ${collectionName}...`);
+
+    await Promise.all(
+      missingDefaults.map((service) => addDoc(productsRef, createProductPayload(service)))
+    );
+
+    console.log(`✅ ${missingDefaults.length} novos serviços adicionados em ${collectionName}`);
     return;
   }
 

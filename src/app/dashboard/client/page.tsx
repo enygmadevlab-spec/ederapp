@@ -8,6 +8,7 @@ import { Order } from '@/types';
 import { Clock, CheckCircle, XCircle, FileText, Loader2, Package, ArrowRight, X, AlertCircle, Camera, Upload, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { getCategoryBadgeText, getSegmentLabel, normalizeBusinessSegment } from '@/lib/businessSegments';
+import { CLIENT_ORDER_FLOW, getOrderStatusBadgeClasses, getOrderStatusLabel } from '@/lib/orderStatus';
 
 export default function ClientDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -55,20 +56,20 @@ export default function ClientDashboard() {
   }, [user, authLoading]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending_docs':
-        return <span className="bg-yellow-600/30 text-yellow-300 border border-yellow-500/50 text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-bold"><Clock className="h-3.5 w-3.5" /> Analisando Docs</span>;
-      case 'processing':
-        return <span className="bg-sky-600/30 text-sky-300 border border-sky-500/50 text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-bold"><Clock className="h-3.5 w-3.5" /> Em Andamento</span>;
-      case 'paid':
-        return <span className="bg-cyan-600/30 text-cyan-300 border border-cyan-500/50 text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-bold"><CheckCircle className="h-3.5 w-3.5" /> Pago</span>;
-      case 'completed':
-        return <span className="bg-green-600/30 text-green-300 border border-green-500/50 text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-bold"><CheckCircle className="h-3.5 w-3.5" /> Concluído</span>;
-      case 'rejected':
-        return <span className="bg-red-600/30 text-red-300 border border-red-500/50 text-xs px-3 py-1 rounded-full flex items-center gap-1.5 font-bold"><XCircle className="h-3.5 w-3.5" /> Pendência</span>;
-      default:
-        return null;
-    }
+    const icon =
+      status === 'completed' || status === 'paid'
+        ? CheckCircle
+        : status === 'rejected' || status === 'failed'
+          ? XCircle
+          : Clock;
+    const Icon = icon;
+
+    return (
+      <span className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${getOrderStatusBadgeClasses(status)}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {getOrderStatusLabel(status)}
+      </span>
+    );
   };
 
   const handleDocumentUpload = async (file: File | null, docName: string, fullName: string) => {
@@ -192,18 +193,18 @@ export default function ClientDashboard() {
   const pageOrders = filteredOrders.slice((page - 1) * perPage, page * perPage);
 
   const OrderTimeline: React.FC<{ status: Order['status'] }> = ({ status }) => {
-    const steps: Order['status'][] = ['pending_docs', 'processing', 'paid', 'completed'];
+    const steps: Order['status'][] = CLIENT_ORDER_FLOW.includes(status) ? CLIENT_ORDER_FLOW : [...CLIENT_ORDER_FLOW, status];
     return (
-      <div className="flex items-center gap-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
         {steps.map(s => (
           <div
             key={s}
             className={`px-2 py-1 rounded-full border ${s === status
-              ? 'bg-sky-600 text-white border-sky-700'
+              ? `${getOrderStatusBadgeClasses(s)} font-semibold`
               : 'bg-white/10 text-slate-400 border-white/20'
               }`}
           >
-            {s.replace('_', ' ')}
+            {getOrderStatusLabel(s)}
           </div>
         ))}
       </div>
@@ -279,15 +280,19 @@ export default function ClientDashboard() {
               <h4 className="font-bold text-sky-300 mb-4 text-sm uppercase tracking-wider">Status de Pedidos</h4>
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Pendente</span>
+                  <span className="text-slate-400">Aguardando pagamento</span>
+                  <span className="font-bold text-white">{localOrders.filter(o => o.status === 'pending_payment').length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Documentos em analise</span>
                   <span className="font-bold text-white">{localOrders.filter(o => o.status === 'pending_docs').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Em Andamento</span>
+                  <span className="text-slate-400">Em processamento</span>
                   <span className="font-bold text-white">{localOrders.filter(o => o.status === 'processing').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Pago</span>
+                  <span className="text-slate-400">Pagamento aprovado</span>
                   <span className="font-bold text-white">{localOrders.filter(o => o.status === 'paid').length}</span>
                 </div>
                 <div className="flex justify-between">
@@ -351,9 +356,10 @@ export default function ClientDashboard() {
                   className="p-2.5 rounded-lg bg-white/5 border border-sky-500/20 text-white focus:border-sky-500 focus:outline-none"
                 >
                   <option value="all">Todos os status</option>
-                  <option value="pending_docs">Pendente Docs</option>
-                  <option value="processing">Em Andamento</option>
-                  <option value="paid">Pago</option>
+                  <option value="pending_payment">Aguardando pagamento</option>
+                  <option value="pending_docs">Documentos em analise</option>
+                  <option value="processing">Em processamento</option>
+                  <option value="paid">Pagamento aprovado</option>
                   <option value="completed">Concluído</option>
                 </select>
                 <select

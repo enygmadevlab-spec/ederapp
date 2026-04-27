@@ -8,11 +8,47 @@ import { useTheme } from '@/context/ThemeContext';
 import { BusinessSegment, ServiceProduct } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
+import { DocsBeforeAfterVisual } from '@/components/DocsBeforeAfterVisual';
 import {
   BUSINESS_COLLECTIONS,
   getCategoryBadgeText,
   normalizeServiceProduct,
 } from '@/lib/businessSegments';
+
+const DOCS_PRIORITY_TITLES = [
+  'licenca de pescador amador em pvc',
+  'rgp pescador profissional em pvc',
+  'registro de embarcacao de pesca em pvc',
+];
+
+function normalizeCatalogTitle(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
+
+function sortCatalogServices(services: ServiceProduct[], segment: BusinessSegment) {
+  if (segment !== 'docs') {
+    return services;
+  }
+
+  return [...services].sort((left, right) => {
+    const leftTitle = normalizeCatalogTitle(left.title);
+    const rightTitle = normalizeCatalogTitle(right.title);
+    const leftPriority = DOCS_PRIORITY_TITLES.indexOf(leftTitle);
+    const rightPriority = DOCS_PRIORITY_TITLES.indexOf(rightTitle);
+    const normalizedLeftPriority = leftPriority === -1 ? Number.MAX_SAFE_INTEGER : leftPriority;
+    const normalizedRightPriority = rightPriority === -1 ? Number.MAX_SAFE_INTEGER : rightPriority;
+
+    if (normalizedLeftPriority !== normalizedRightPriority) {
+      return normalizedLeftPriority - normalizedRightPriority;
+    }
+
+    return 0;
+  });
+}
 
 interface ProductCatalogPageProps {
   segment: BusinessSegment;
@@ -94,6 +130,11 @@ export function ProductCatalogPage({
     }
   }, [fallbackProducts, segment]);
 
+  const orderedServices = React.useMemo(
+    () => sortCatalogServices(services, segment),
+    [segment, services]
+  );
+
   const handleAdd = (service: ServiceProduct) => {
     addToCart(service);
     setAddedIds((prev) => [...prev, `${segment}:${service.id}`]);
@@ -124,7 +165,7 @@ export function ProductCatalogPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service) => {
+            {orderedServices.map((service) => {
               const serviceKey = `${segment}:${service.id}`;
 
               return (
@@ -138,8 +179,18 @@ export function ProductCatalogPage({
                   }}
                 >
                   <div className="relative h-56 overflow-hidden bg-gradient-to-b from-sky-900 to-slate-900" style={{ background: imageBackground }}>
-                    <img src={service.image} alt={service.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 opacity-70" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#020c1b] via-transparent to-transparent z-10"></div>
+                    {segment === 'docs' ? (
+                      <DocsBeforeAfterVisual
+                        title={service.title}
+                        category={service.category}
+                        backgroundImage={service.image}
+                      />
+                    ) : (
+                      <>
+                        <img src={service.image} alt={service.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 opacity-70" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#020c1b] via-transparent to-transparent z-10"></div>
+                      </>
+                    )}
                     <div className="absolute top-4 right-4 z-20 bg-sky-600/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wide shadow-lg">
                       {getCategoryBadgeText(service.category, segment)}
                     </div>

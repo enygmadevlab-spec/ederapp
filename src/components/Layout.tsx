@@ -138,38 +138,57 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       <FloatingCart />
 
-      <footer className="theme-footer py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-               <div className="bg-blue-600 p-1.5 rounded-lg">
+      <footer className="theme-footer py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 border-b pb-6 md:grid-cols-[1.35fr_1fr_1fr]" style={{ borderColor: 'var(--theme-nav-border)' }}>
+            <div className="max-w-md">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="rounded-lg bg-blue-600 p-1.5">
                   <Anchor className="h-4 w-4 text-white" />
-               </div>
-               <h3 className="theme-text-strong font-bold text-lg">Eder Martins</h3>
+                </div>
+                <div>
+                  <h3 className="theme-text-strong text-base font-bold leading-none">Eder Martins</h3>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.24em] theme-text-subtle">Assessoria Náutica</p>
+                </div>
+              </div>
+              <p className="text-sm leading-6 theme-text-muted">
+                Regularização náutica e documentos em PVC com atendimento objetivo, seguro e suporte online em todo o Brasil.
+              </p>
             </div>
-            <p className="text-sm leading-relaxed theme-text-muted">
-              Especialista em documentação náutica. Regularize sua embarcação com agilidade, segurança e transparência.
-            </p>
+
+            <div>
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] theme-text-subtle">Contato</h3>
+              <div className="space-y-2 text-sm">
+                <a
+                  href="https://wa.me/5548996241068"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block theme-text-body transition-colors ${footerHoverClassName}`}
+                >
+                  WhatsApp: (48) 99624-1068
+                </a>
+                <a
+                  href="mailto:pescasulbrasil@gmail.com"
+                  className={`block theme-text-body transition-colors ${footerHoverClassName}`}
+                >
+                  Email: pescasulbrasil@gmail.com
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] theme-text-subtle">Atendimento</h3>
+              <p className="text-sm leading-6 theme-text-body">Segunda a sexta, 08:00 às 18:00</p>
+              <p className="mt-2 text-sm leading-6 theme-text-muted">
+                Retorno rápido por WhatsApp e email.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="theme-text-strong font-semibold mb-4 text-sm uppercase tracking-wider">Contato</h3>
-            <ul className="space-y-3">
-              <li className={`flex items-center gap-2 text-sm theme-text-body transition-colors cursor-pointer ${footerHoverClassName}`}>
-                WhatsApp: (48) 99624-1068
-              </li>
-              <li className={`flex items-center gap-2 text-sm theme-text-body transition-colors cursor-pointer ${footerHoverClassName}`}>
-                Email: pescasulbrasil@gmail.com
-              </li>
-            </ul>
+
+          <div className="flex flex-col gap-2 pt-4 text-xs theme-text-subtle md:flex-row md:items-center md:justify-between">
+            <p>© {new Date().getFullYear()} Eder Martins Assessoria Náutica. Todos os direitos reservados.</p>
+            <p>Atendimento nacional com operação digital.</p>
           </div>
-          <div>
-            <h3 className="theme-text-strong font-semibold mb-4 text-sm uppercase tracking-wider">Atendimento</h3>
-            <p className="text-sm theme-text-muted">Segunda a Sexta<br />08:00 - 18:00</p>
-            <p className="mt-4 text-sm theme-text-body">Atendimento online com retorno rápido no WhatsApp e por email.</p>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 text-center text-xs theme-text-subtle" style={{ borderTop: '1px solid var(--theme-nav-border)' }}>
-          © {new Date().getFullYear()} Eder Martins Assessoria Náutica. Todos os direitos reservados.
         </div>
       </footer>
     </div>

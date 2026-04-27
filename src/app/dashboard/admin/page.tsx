@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { BusinessSegment, Order, Product, OrderItem, LayoutEditConfig, ProductCategory, ServiceProduct, UserRole } from '@/types';
+import { AgendaClient, BusinessSegment, Order, Product, OrderItem, LayoutEditConfig, ProductCategory, ServiceProduct, UserRole } from '@/types';
 import { 
   BarChart3, Package, ShoppingCart, TrendingUp, LogOut, Menu, X,
   CheckCircle, Clock, AlertCircle, Loader2, Search, Plus, FileText,
@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { LayoutEditor } from '@/components/LayoutEditor';
 import { AdminAgendaTab } from '@/components/admin/AdminAgendaTab';
+import { AdminServicesTab } from '@/components/admin/AdminServicesTab';
 import { DEFAULT_SERVICES } from '@/lib/defaultServices';
 import {
   BUSINESS_COLLECTIONS,
@@ -24,8 +25,9 @@ import {
   normalizeProductRecord,
 } from '@/lib/businessSegments';
 import { createDefaultLayout, mergeLayoutWithDefaults } from '@/lib/defaultLayout';
+import { getOrderStatusBadgeClasses, getOrderStatusLabel } from '@/lib/orderStatus';
 
-type AdminTab = 'dashboard' | 'orders' | 'completed' | 'products' | 'docsProducts' | 'agenda' | 'stats' | 'layout';
+type AdminTab = 'services' | 'dashboard' | 'orders' | 'completed' | 'products' | 'docsProducts' | 'agenda' | 'stats' | 'layout';
 
 interface User {
   id: string;
@@ -66,7 +68,7 @@ function createEmptyProductForm(segment: BusinessSegment): ProductFormData {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTab>('services');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,7 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [serviceDraftClient, setServiceDraftClient] = useState<AgendaClient | null>(null);
   const [currentLayout, setCurrentLayout] = useState<LayoutEditConfig>(createDefaultLayout());
   const [layoutLoading, setLayoutLoading] = useState(false);
   const { user: adminUser, logout } = useAuth();
@@ -387,15 +390,7 @@ export default function AdminDashboard() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending_docs': return 'bg-yellow-600/30 text-yellow-300 border-yellow-500/50';
-      case 'pending_payment': return 'bg-orange-600/30 text-orange-300 border-orange-500/50';
-      case 'processing': return 'bg-blue-600/30 text-blue-300 border-blue-500/50';
-      case 'paid': return 'bg-cyan-600/30 text-cyan-300 border-cyan-500/50';
-      case 'completed': return 'bg-green-600/30 text-green-300 border-green-500/50';
-      case 'rejected': return 'bg-red-600/30 text-red-300 border-red-500/50';
-      default: return 'bg-slate-600/30 text-slate-300 border-slate-500/50';
-    }
+    return getOrderStatusBadgeClasses(status);
   };
 
   const isDocumentUploaded = (docName: string): boolean => {
@@ -567,20 +562,20 @@ export default function AdminDashboard() {
   };
 
   const StatCard = ({ icon: Icon, label, value, trend }: StatCardProps) => (
-    <div className="glass-panel p-6 rounded-xl border border-sky-500/20 hover:border-sky-500/40 transition-all">
+    <div className="glass-panel rounded-xl border border-sky-500/20 p-4 hover:border-sky-500/40 transition-all">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm text-slate-400 font-medium mb-1">{label}</p>
-          <p className="text-3xl font-bold text-white">{value}</p>
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">{label}</p>
+          <p className="text-2xl font-bold text-white">{value}</p>
           {trend && (
-            <p className={`text-xs mt-2 flex items-center gap-1 ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`mt-1.5 flex items-center gap-1 text-[10px] ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
               {trend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownLeft className="h-3 w-3" />}
               {Math.abs(trend)}%
             </p>
           )}
         </div>
-        <div className="p-3 bg-sky-600/20 rounded-lg border border-sky-500/30">
-          <Icon className="h-6 w-6 text-sky-400" />
+        <div className="rounded-lg border border-sky-500/30 bg-sky-600/20 p-2.5">
+          <Icon className="h-5 w-5 text-sky-400" />
         </div>
       </div>
     </div>
@@ -617,6 +612,7 @@ export default function AdminDashboard() {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {[
+            { id: 'services' as AdminTab, label: 'Serviços', icon: FileText },
             { id: 'dashboard' as AdminTab, label: 'Dashboard', icon: BarChart3 },
             { id: 'orders' as AdminTab, label: 'Pedidos Pendentes', icon: ShoppingCart },
             { id: 'completed' as AdminTab, label: 'Vendas Finalizadas', icon: CheckCircle },
@@ -661,39 +657,48 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <div className="bg-white/5 backdrop-blur border-b border-sky-500/20 p-6 flex items-center justify-between flex-wrap gap-4">
-          <h2 className="text-2xl font-bold text-white capitalize">
-            {activeTab === 'dashboard' && '📊 Dashboard'}
-            {activeTab === 'orders' && '📦 Pedidos Pendentes'}
-            {activeTab === 'completed' && '✅ Vendas Finalizadas'}
-            {activeTab === 'products' && '🛥️ Produtos Náuticos'}
-            {activeTab === 'docsProducts' && '💳 Docs PVC'}
-            {activeTab === 'agenda' && '🗓️ Agenda de Clientes'}
-            {activeTab === 'layout' && '🎨 Layout Editor'}
-            {activeTab === 'stats' && '📈 Estatísticas'}
-          </h2>
-          {shouldShowGlobalSearch && (
-            <div className="relative w-full md:w-auto">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-sky-500/30 bg-white/10 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none md:w-[280px]"
-              />
-            </div>
-          )}
-        </div>
+        {activeTab !== 'dashboard' && activeTab !== 'services' && (
+          <div className="bg-white/5 backdrop-blur border-b border-sky-500/20 p-6 flex items-center justify-between flex-wrap gap-4">
+            <h2 className="text-2xl font-bold text-white capitalize">
+              {activeTab === 'orders' && '📦 Pedidos Pendentes'}
+              {activeTab === 'completed' && '✅ Vendas Finalizadas'}
+              {activeTab === 'products' && '🛥️ Produtos Náuticos'}
+              {activeTab === 'docsProducts' && '💳 Docs PVC'}
+              {activeTab === 'agenda' && '🗓️ Agenda de Clientes'}
+              {activeTab === 'layout' && '🎨 Layout Editor'}
+              {activeTab === 'stats' && '📈 Estatísticas'}
+            </h2>
+            {shouldShowGlobalSearch && (
+              <div className="relative w-full md:w-auto">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-sky-500/30 bg-white/10 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none md:w-[280px]"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className={`flex-1 overflow-auto ${activeTab === 'services' ? 'p-4' : 'p-6'}`}>
           <div className="max-w-7xl mx-auto space-y-6">
+            {activeTab === 'services' && (
+              <AdminServicesTab
+                products={products}
+                docsProducts={docsProducts}
+                draftClient={serviceDraftClient}
+                onDraftClientConsumed={() => setServiceDraftClient(null)}
+              />
+            )}
+
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                   <StatCard icon={ShoppingCart} label="Total Pedidos" value={stats.total} />
                   <StatCard icon={Clock} label="Pendentes" value={stats.pending} />
                   <StatCard icon={CheckCircle} label="Concluídos" value={stats.completed} />
@@ -721,8 +726,8 @@ export default function AdminDashboard() {
                             <td className="py-3 px-4 text-slate-400 font-mono text-xs">{order.id.slice(0, 8)}</td>
                             <td className="py-3 px-4 text-sky-300 font-semibold">R$ {order.total.toFixed(2)}</td>
                             <td className="py-3 px-4">
-                              <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(order.status)}`}>
-                                {order.status.replace('_', ' ')}
+                              <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-medium leading-none ${getStatusColor(order.status)}`}>
+                                {getOrderStatusLabel(order.status)}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-slate-400 text-xs">{new Date(order.date).toLocaleDateString('pt-BR')}</td>
@@ -801,8 +806,8 @@ export default function AdminDashboard() {
                           <h4 className="text-lg font-bold text-white">{order.userName || 'Cliente'}</h4>
                           <p className="text-xs text-slate-400 font-mono">ID: {order.id}</p>
                         </div>
-                        <span className={`text-xs px-3 py-1 rounded-full border ${getStatusColor(order.status)}`}>
-                          {order.status.replace('_', ' ')}
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none ${getStatusColor(order.status)}`}>
+                          {getOrderStatusLabel(order.status)}
                         </span>
                       </div>
                       
@@ -847,8 +852,8 @@ export default function AdminDashboard() {
                         >
                           <option value="pending_docs">Analisando Docs</option>
                           <option value="pending_payment">Aguardando Pagamento</option>
-                          <option value="processing">Em Processamento</option>
-                          <option value="paid">Pago</option>
+                          <option value="processing">Em processamento</option>
+                          <option value="paid">Pagamento aprovado</option>
                           <option value="completed">Concluído</option>
                           <option value="rejected">Rejeitado</option>
                         </select>
@@ -1147,8 +1152,15 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Layout Editor Tab */}
-            {activeTab === 'agenda' && <AdminAgendaTab />}
+            {/* Agenda Tab */}
+            {activeTab === 'agenda' && (
+              <AdminAgendaTab
+                onCreateService={(client) => {
+                  setServiceDraftClient(client);
+                  setActiveTab('services');
+                }}
+              />
+            )}
 
             {/* Layout Editor Tab */}
             {activeTab === 'layout' && (
@@ -1187,7 +1199,7 @@ export default function AdminDashboard() {
                       return (
                         <div key={status}>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-300 capitalize">{status.replace('_', ' ')}</span>
+                            <span className="text-slate-300">{getOrderStatusLabel(status)}</span>
                             <span className="text-sky-300 font-semibold">{count}</span>
                           </div>
                           <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-sky-500/20">
@@ -1341,10 +1353,52 @@ export default function AdminDashboard() {
                 <h4 className="text-sky-300 font-bold mb-3">👤 Cliente</h4>
                 <div className="space-y-2 text-sm">
                   <p><span className="text-slate-400">Nome:</span> <span className="text-white">{selectedOrder.userName || 'N/A'}</span></p>
-                  <p><span className="text-slate-400">Status do Pedido:</span> <span className={`font-semibold ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status.replace('_', ' ')}</span></p>
+                  {selectedOrder.clientSnapshot?.phone && (
+                    <p><span className="text-slate-400">Telefone:</span> <span className="text-white">{selectedOrder.clientSnapshot.phone}</span></p>
+                  )}
+                  {selectedOrder.clientSnapshot?.email && (
+                    <p><span className="text-slate-400">Email:</span> <span className="text-white">{selectedOrder.clientSnapshot.email}</span></p>
+                  )}
+                  {selectedOrder.clientSnapshot?.document && (
+                    <p><span className="text-slate-400">Documento:</span> <span className="text-white">{selectedOrder.clientSnapshot.document}</span></p>
+                  )}
+                  {selectedOrder.clientSnapshot?.birthDate && (
+                    <p><span className="text-slate-400">Nascimento:</span> <span className="text-white">{selectedOrder.clientSnapshot.birthDate}</span></p>
+                  )}
+                  {selectedOrder.clientSnapshot?.address && (
+                    <p><span className="text-slate-400">Endereco:</span> <span className="text-white">{selectedOrder.clientSnapshot.address}</span></p>
+                  )}
+                  <p>
+                    <span className="text-slate-400">Status do Pedido:</span>{' '}
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none ${getStatusColor(selectedOrder.status)}`}>
+                      {getOrderStatusLabel(selectedOrder.status)}
+                    </span>
+                  </p>
                   <p><span className="text-slate-400">Data:</span> <span className="text-white">{new Date(selectedOrder.date).toLocaleDateString('pt-BR')}</span></p>
                 </div>
               </div>
+
+              {selectedOrderItem.serviceAnswers && selectedOrderItem.serviceAnswers.length > 0 && (
+                <div className="glass-panel p-4 rounded-xl border border-cyan-500/20">
+                  <h4 className="mb-3 flex items-center gap-2 font-bold text-cyan-300">
+                    <FileText className="h-4 w-4" />
+                    Dados Operacionais do Servico
+                  </h4>
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#020c1b]/50">
+                    {selectedOrderItem.serviceAnswers.map((answer) => (
+                      <div
+                        key={`${selectedOrderItem.cartId}-${answer.label}`}
+                        className="grid grid-cols-[150px_minmax(0,1fr)] gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0"
+                      >
+                        <span className="font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {answer.label}
+                        </span>
+                        <span className="min-w-0 break-words text-slate-200">{answer.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Botão Fechar */}
               <div className="flex gap-2">

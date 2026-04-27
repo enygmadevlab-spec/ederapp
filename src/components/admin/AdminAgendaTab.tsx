@@ -16,15 +16,18 @@ import {
   Copy,
   Edit3,
   ExternalLink,
+  FileText,
   Loader2,
   Mail,
   MapPin,
   MessageCircle,
   NotebookPen,
   Phone,
+  Plus,
   Search,
   Trash2,
   UserRoundPlus,
+  X,
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { AgendaClient, AgendaClientStatus } from '@/types';
@@ -35,32 +38,38 @@ type AgendaFormData = Omit<AgendaClient, 'id' | 'createdAt' | 'updatedAt'>;
 const STATUS_META: Array<{
   value: AgendaClientStatus;
   label: string;
+  shortLabel: string;
   badgeClassName: string;
 }> = [
   {
     value: 'novo',
     label: 'Novo lead',
-    badgeClassName: 'bg-sky-600/20 text-sky-300 border-sky-500/30',
+    shortLabel: 'Novo',
+    badgeClassName: 'bg-sky-600/15 text-sky-300 border-sky-500/30',
   },
   {
     value: 'em_contato',
     label: 'Em contato',
-    badgeClassName: 'bg-cyan-600/20 text-cyan-300 border-cyan-500/30',
+    shortLabel: 'Contato',
+    badgeClassName: 'bg-cyan-600/15 text-cyan-300 border-cyan-500/30',
   },
   {
     value: 'aguardando',
     label: 'Aguardando',
-    badgeClassName: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
+    shortLabel: 'Aguard.',
+    badgeClassName: 'bg-amber-600/15 text-amber-300 border-amber-500/30',
   },
   {
     value: 'convertido',
     label: 'Convertido',
-    badgeClassName: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30',
+    shortLabel: 'Fechado',
+    badgeClassName: 'bg-emerald-600/15 text-emerald-300 border-emerald-500/30',
   },
   {
     value: 'pausado',
     label: 'Pausado',
-    badgeClassName: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
+    shortLabel: 'Pausado',
+    badgeClassName: 'bg-slate-600/15 text-slate-300 border-slate-500/30',
   },
 ];
 
@@ -115,6 +124,7 @@ function toDateValue(value?: string) {
 function formatDateTime(value?: string) {
   const date = toDateValue(value);
   if (!date || Number.isNaN(date.getTime())) return 'Sem data definida';
+
   return date.toLocaleString('pt-BR', {
     dateStyle: 'short',
     timeStyle: 'short',
@@ -127,6 +137,11 @@ function getWhatsAppHref(phone: string, message: string) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+function getSegmentInterestLabel(segment?: AgendaClient['segmentInterest']) {
+  if (segment === 'ambos') return 'Náutica + Docs PVC';
+  return getSegmentLabel(segment);
+}
+
 function buildClientSummary(client: AgendaClient) {
   return [
     `Cliente: ${client.name || 'Não informado'}`,
@@ -136,11 +151,7 @@ function buildClientSummary(client: AgendaClient) {
     `Cidade: ${client.city || 'Não informado'}`,
     `Origem: ${client.source || 'Não informada'}`,
     `Interesse: ${client.serviceInterest || 'Não informado'}`,
-    `Área: ${
-      client.segmentInterest === 'ambos'
-        ? 'Náutica + Docs PVC'
-        : getSegmentLabel(client.segmentInterest)
-    }`,
+    `Área: ${getSegmentInterestLabel(client.segmentInterest)}`,
     `Status: ${getStatusMeta(client.status).label}`,
     `Próxima ação: ${formatDateTime(client.scheduledFor)}`,
     `Observações: ${client.notes || 'Sem observações'}`,
@@ -164,7 +175,51 @@ function buildFollowUpMessage(client: AgendaClient) {
   ].join(' ');
 }
 
-export function AdminAgendaTab() {
+function SmallStatusBadge({ status }: { status: AgendaClientStatus }) {
+  const statusMeta = getStatusMeta(status);
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none ${statusMeta.badgeClassName}`}
+      title={statusMeta.label}
+    >
+      {statusMeta.shortLabel}
+    </span>
+  );
+}
+
+function ActionIconButton({
+  children,
+  title,
+  className,
+  disabled = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  title: string;
+  className?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${className || 'border-slate-600 bg-white/5 text-slate-300 hover:border-slate-500 hover:text-white'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function AdminAgendaTab({
+  onCreateService,
+}: {
+  onCreateService?: (client: AgendaClient) => void;
+}) {
   const [clients, setClients] = useState<AgendaClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -174,6 +229,7 @@ export function AdminAgendaTab() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     if (!db) {
@@ -201,6 +257,20 @@ export function AdminAgendaTab() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    if (isFormOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFormOpen]);
 
   const filteredClients = useMemo(() => {
     const normalizedQuery = search.trim().toLowerCase();
@@ -249,16 +319,48 @@ export function AdminAgendaTab() {
   }, [clients]);
 
   const upcomingClients = useMemo(
-    () =>
-      filteredClients
-        .filter((client) => client.scheduledFor)
-        .slice(0, 4),
+    () => filteredClients.filter((client) => client.scheduledFor).slice(0, 4),
     [filteredClients]
+  );
+
+  const previewClient = useMemo(
+    () =>
+      normalizeAgendaRecord({
+        id: editingId || 'preview',
+        ...formData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    [editingId, formData]
+  );
+
+  const summaryRows = useMemo(
+    () => [
+      { label: 'Cliente', value: previewClient.name || 'Não informado' },
+      { label: 'Contato', value: previewClient.phone || previewClient.email || 'Não informado' },
+      { label: 'Documento', value: previewClient.document || 'Não informado' },
+      { label: 'Cidade', value: previewClient.city || 'Não informada' },
+      { label: 'Área', value: getSegmentInterestLabel(previewClient.segmentInterest) },
+      { label: 'Serviço', value: previewClient.serviceInterest || 'Não informado' },
+      { label: 'Status', value: getStatusMeta(previewClient.status).label },
+      { label: 'Retorno', value: formatDateTime(previewClient.scheduledFor) },
+    ],
+    [previewClient]
   );
 
   const resetForm = () => {
     setFormData(EMPTY_FORM);
     setEditingId(null);
+  };
+
+  const closeFormModal = () => {
+    setIsFormOpen(false);
+    resetForm();
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setIsFormOpen(true);
   };
 
   const handleCopy = async (text: string, key: string) => {
@@ -314,7 +416,7 @@ export function AdminAgendaTab() {
         });
       }
 
-      resetForm();
+      closeFormModal();
     } catch (error) {
       console.error('Erro ao salvar cadastro da agenda:', error);
       alert('Não foi possível salvar o cadastro da agenda.');
@@ -338,6 +440,7 @@ export function AdminAgendaTab() {
       scheduledFor: client.scheduledFor || '',
       notes: client.notes || '',
     });
+    setIsFormOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -347,8 +450,9 @@ export function AdminAgendaTab() {
     try {
       setDeletingId(id);
       await deleteDoc(doc(db, 'adminAgenda', id));
+
       if (editingId === id) {
-        resetForm();
+        closeFormModal();
       }
     } catch (error) {
       console.error('Erro ao remover cadastro da agenda:', error);
@@ -356,6 +460,87 @@ export function AdminAgendaTab() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const renderActions = (client: AgendaClient) => {
+    const summaryText = buildClientSummary(client);
+    const followUpMessage = buildFollowUpMessage(client);
+    const whatsappHref = getWhatsAppHref(client.phone, followUpMessage);
+
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <ActionIconButton
+          title={copiedKey === `${client.id}-summary` ? 'Ficha copiada' : 'Copiar ficha'}
+          onClick={() => handleCopy(summaryText, `${client.id}-summary`)}
+        >
+          <Copy className="h-4 w-4" />
+        </ActionIconButton>
+
+        <ActionIconButton
+          title={copiedKey === `${client.id}-contact` ? 'Contato copiado' : 'Copiar contato'}
+          onClick={() =>
+            handleCopy(
+              [client.name, client.phone, client.email].filter(Boolean).join(' | '),
+              `${client.id}-contact`
+            )
+          }
+        >
+          <Clipboard className="h-4 w-4" />
+        </ActionIconButton>
+
+        <ActionIconButton
+          title={copiedKey === `${client.id}-message` ? 'Mensagem copiada' : 'Copiar mensagem'}
+          className="border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:border-cyan-400/40 hover:bg-cyan-500/15"
+          onClick={() => handleCopy(followUpMessage, `${client.id}-message`)}
+        >
+          <MessageCircle className="h-4 w-4" />
+        </ActionIconButton>
+
+        {whatsappHref && (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Abrir WhatsApp"
+            aria-label="Abrir WhatsApp"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white transition-colors hover:bg-emerald-500"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+
+        {onCreateService && (
+          <ActionIconButton
+            title="Criar servico"
+            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/40 hover:bg-emerald-500/15"
+            onClick={() => onCreateService(client)}
+          >
+            <FileText className="h-4 w-4" />
+          </ActionIconButton>
+        )}
+
+        <ActionIconButton
+          title="Editar cadastro"
+          className="border-sky-500/30 bg-sky-500/10 text-sky-200 hover:border-sky-400/40 hover:bg-sky-500/15"
+          onClick={() => handleEdit(client)}
+        >
+          <Edit3 className="h-4 w-4" />
+        </ActionIconButton>
+
+        <ActionIconButton
+          title="Remover cadastro"
+          disabled={deletingId === client.id}
+          className="border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+          onClick={() => handleDelete(client.id)}
+        >
+          {deletingId === client.id ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </ActionIconButton>
+      </div>
+    );
   };
 
   return (
@@ -383,423 +568,515 @@ export function AdminAgendaTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.4fr)]">
-        <section className="glass-panel rounded-2xl border border-sky-500/20 p-6">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="flex items-center gap-2 text-xl font-bold text-white">
-                <UserRoundPlus className="h-5 w-5 text-sky-300" />
-                {editingId ? 'Editar cadastro' : 'Novo cadastro de cliente'}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Registre o contato, a área de interesse, a próxima ação e observações internas do atendimento.
-              </p>
-            </div>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
-              >
-                Cancelar edição
-              </button>
-            )}
+      <section className="glass-panel rounded-2xl border border-sky-500/20 p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-white">Agenda de Clientes</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              Organize leads e clientes em uma fila simples de operação. Os cadastros ficam em linhas
+              e colunas no desktop, com atalhos rápidos para copiar ficha, contato e mensagem.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Nome do cliente</label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-500" />
               <input
                 type="text"
-                value={formData.name}
-                onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Ex: Marina Oliveira"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar cliente, contato ou nota..."
+                className="w-full rounded-xl border border-sky-500/20 bg-white/5 py-3 pl-10 pr-4 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Telefone / WhatsApp</label>
-              <input
-                type="text"
-                value={formData.phone}
-                onChange={(event) => setFormData((current) => ({ ...current, phone: event.target.value }))}
-                placeholder="Ex: 48999999999"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
-                placeholder="cliente@email.com"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">CPF / CNPJ / Documento</label>
-              <input
-                type="text"
-                value={formData.document}
-                onChange={(event) => setFormData((current) => ({ ...current, document: event.target.value }))}
-                placeholder="Documento para referência"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Cidade / UF</label>
-              <input
-                type="text"
-                value={formData.city}
-                onChange={(event) => setFormData((current) => ({ ...current, city: event.target.value }))}
-                placeholder="Ex: Florianópolis - SC"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Origem do lead</label>
-              <input
-                type="text"
-                value={formData.source}
-                onChange={(event) => setFormData((current) => ({ ...current, source: event.target.value }))}
-                placeholder="Ex: Instagram, indicação, site"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Área de interesse</label>
-              <select
-                value={formData.segmentInterest}
-                onChange={(event) =>
-                  setFormData((current) => ({
-                    ...current,
-                    segmentInterest: event.target.value as AgendaFormData['segmentInterest'],
-                  }))
-                }
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
-              >
-                <option value="nautica">Assessoria Náutica</option>
-                <option value="docs">Docs PVC</option>
-                <option value="ambos">Ambos</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Status</label>
-              <select
-                value={formData.status}
-                onChange={(event) =>
-                  setFormData((current) => ({
-                    ...current,
-                    status: event.target.value as AgendaClientStatus,
-                  }))
-                }
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
-              >
-                {STATUS_META.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Serviço de interesse</label>
-              <input
-                type="text"
-                value={formData.serviceInterest}
-                onChange={(event) =>
-                  setFormData((current) => ({ ...current, serviceInterest: event.target.value }))
-                }
-                placeholder="Ex: Transferência, CRLV PVC, habilitação"
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Próximo retorno</label>
-              <input
-                type="datetime-local"
-                value={formData.scheduledFor}
-                onChange={(event) =>
-                  setFormData((current) => ({ ...current, scheduledFor: event.target.value }))
-                }
-                className="w-full rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-300">Observações</label>
-            <textarea
-              value={formData.notes}
-              onChange={(event) => setFormData((current) => ({ ...current, notes: event.target.value }))}
-              placeholder="Anote o contexto, documentos pendentes, objeções e próximos passos."
-              className="min-h-[140px] w-full rounded-2xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-            />
-          </div>
-
-          <div className="mt-6 flex flex-col gap-3 border-t border-sky-500/20 pt-5 sm:flex-row">
             <button
               type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-3 font-bold text-white transition-all hover:from-sky-500 hover:to-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={openCreateModal}
+              title="Novo cliente"
+              aria-label="Novo cliente"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-[0_12px_30px_rgba(14,165,233,0.30)] transition-transform hover:scale-105"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <NotebookPen className="h-4 w-4" />}
-              {editingId ? 'Salvar alterações' : 'Cadastrar cliente'}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCopy(buildClientSummary(normalizeAgendaRecord({ id: 'preview', ...formData })), 'preview')}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
-            >
-              <Clipboard className="h-4 w-4" />
-              {copiedKey === 'preview' ? 'Ficha copiada' : 'Copiar ficha do cadastro'}
+              <Plus className="h-5 w-5" />
             </button>
           </div>
-        </section>
+        </div>
 
-        <section className="space-y-6">
-          <div className="glass-panel rounded-2xl border border-sky-500/20 p-6">
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">Fila de atendimento</h3>
-                <p className="mt-2 text-sm text-slate-400">
-                  Consulte rapidamente cada cliente, filtre por status e copie mensagens prontas.
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              statusFilter === 'all'
+                ? 'border-sky-400/40 bg-sky-500/10 text-sky-200'
+                : 'border-slate-600 bg-white/5 text-slate-300 hover:border-slate-500 hover:text-white'
+            }`}
+          >
+            Todos
+          </button>
+          {STATUS_META.map((status) => (
+            <button
+              key={status.value}
+              type="button"
+              onClick={() => setStatusFilter(status.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                statusFilter === status.value
+                  ? status.badgeClassName
+                  : 'border-slate-600 bg-white/5 text-slate-300 hover:border-slate-500 hover:text-white'
+              }`}
+            >
+              {status.shortLabel}
+            </button>
+          ))}
+        </div>
+
+        {upcomingClients.length > 0 && (
+          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {upcomingClients.map((client) => (
+              <div
+                key={`upcoming-${client.id}`}
+                className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate font-semibold text-white">{client.name}</p>
+                  <SmallStatusBadge status={client.status} />
+                </div>
+                <p className="mt-2 text-sm text-slate-300">
+                  {client.serviceInterest || 'Atendimento geral'}
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-xs text-cyan-200">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  {formatDateTime(client.scheduledFor)}
                 </p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative min-w-[220px]">
-                  <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-500" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Buscar cliente, contato, nota..."
-                    className="w-full rounded-xl border border-sky-500/20 bg-white/5 py-3 pl-10 pr-4 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-                  />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(event) =>
-                    setStatusFilter(event.target.value as 'all' | AgendaClientStatus)
-                  }
-                  className="rounded-xl border border-sky-500/20 bg-white/5 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
-                >
-                  <option value="all">Todos os status</option>
-                  {STATUS_META.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
+            ))}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-sky-500/20 p-10 text-center">
+            <p className="text-lg font-semibold text-white">Nenhum cadastro encontrado</p>
+            <p className="mt-2 text-sm text-slate-400">
+              Clique no botão `+` para criar o primeiro cliente da agenda.
+            </p>
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="mx-auto mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-sky-600 to-cyan-500 text-white"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 hidden xl:block">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1160px] border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                      <th className="px-4 py-2">Cliente</th>
+                      <th className="px-4 py-2">Contato</th>
+                      <th className="px-4 py-2">Área / Serviço</th>
+                      <th className="px-4 py-2">Origem / Cidade</th>
+                      <th className="px-4 py-2">Retorno</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredClients.map((client) => (
+                      <tr key={client.id}>
+                        <td className="rounded-l-2xl border-y border-l border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          <p className="font-semibold text-white">{client.name}</p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {client.document || 'Sem documento'}
+                          </p>
+                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                            {client.notes || 'Sem observações registradas.'}
+                          </p>
+                        </td>
+                        <td className="border-y border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          <div className="space-y-2 text-sm text-slate-300">
+                            <p className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-sky-300" />
+                              <span>{client.phone || 'Não informado'}</span>
+                            </p>
+                            <p className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-sky-300" />
+                              <span className="truncate">{client.email || 'Não informado'}</span>
+                            </p>
+                          </div>
+                        </td>
+                        <td className="border-y border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          <p className="text-sm font-semibold text-white">
+                            {client.serviceInterest || 'Sem serviço definido'}
+                          </p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">
+                            {getSegmentInterestLabel(client.segmentInterest)}
+                          </p>
+                        </td>
+                        <td className="border-y border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          <p className="text-sm text-white">{client.source || 'Origem não informada'}</p>
+                          <p className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+                            <MapPin className="h-4 w-4 text-sky-300" />
+                            <span>{client.city || 'Cidade não informada'}</span>
+                          </p>
+                        </td>
+                        <td className="border-y border-sky-500/20 bg-white/5 px-4 py-4 align-top text-sm text-slate-300">
+                          {formatDateTime(client.scheduledFor)}
+                        </td>
+                        <td className="border-y border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          <SmallStatusBadge status={client.status} />
+                        </td>
+                        <td className="rounded-r-2xl border-y border-r border-sky-500/20 bg-white/5 px-4 py-4 align-top">
+                          {renderActions(client)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {upcomingClients.length > 0 && (
-              <div className="mb-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-                <div className="mb-3 flex items-center gap-2 text-cyan-300">
-                  <CalendarDays className="h-4 w-4" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.2em]">Próximos retornos</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {upcomingClients.map((client) => (
-                    <div
-                      key={`upcoming-${client.id}`}
-                      className="rounded-xl border border-white/10 bg-white/5 p-3"
-                    >
-                      <p className="font-semibold text-white">{client.name}</p>
-                      <p className="mt-1 text-sm text-slate-400">{formatDateTime(client.scheduledFor)}</p>
+            <div className="mt-6 space-y-3 xl:hidden">
+              {filteredClients.map((client) => (
+                <article
+                  key={client.id}
+                  className="rounded-2xl border border-sky-500/20 bg-white/5 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4 className="truncate text-lg font-bold text-white">{client.name}</h4>
                       <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">
-                        {client.serviceInterest || 'Atendimento geral'}
+                        {getSegmentInterestLabel(client.segmentInterest)}
                       </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <SmallStatusBadge status={client.status} />
+                  </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-              </div>
-            ) : filteredClients.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-sky-500/20 p-10 text-center">
-                <p className="text-lg font-semibold text-white">Nenhum cadastro encontrado</p>
+                  <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-slate-300 sm:grid-cols-2">
+                    <p className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-sky-300" />
+                      <span>{client.phone || 'Não informado'}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-sky-300" />
+                      <span className="truncate">{client.email || 'Não informado'}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-sky-300" />
+                      <span>{client.city || 'Cidade não informada'}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-sky-300" />
+                      <span>{formatDateTime(client.scheduledFor)}</span>
+                    </p>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-[#020c1b]/45 p-3">
+                    <p className="text-sm font-semibold text-white">
+                      {client.serviceInterest || 'Sem serviço definido'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {client.source || 'Origem não informada'} • {client.document || 'Sem documento'}
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      {client.notes || 'Sem observações registradas.'}
+                    </p>
+                  </div>
+
+                  <div className="mt-4">{renderActions(client)}</div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {isFormOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          onClick={closeFormModal}
+        >
+          <div
+            className="glass-panel max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[28px] border border-sky-500/20"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-sky-500/20 bg-[#020c1b]/95 px-6 py-5 backdrop-blur">
+              <div>
+                <h3 className="flex items-center gap-2 text-2xl font-bold text-white">
+                  <UserRoundPlus className="h-5 w-5 text-sky-300" />
+                  {editingId ? 'Editar cliente' : 'Novo cliente'}
+                </h3>
                 <p className="mt-2 text-sm text-slate-400">
-                  Crie o primeiro cliente da agenda ou ajuste o filtro atual.
+                  Cadastro em janela flutuante para preencher, revisar e salvar sem sair da agenda.
                 </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredClients.map((client) => {
-                  const summaryText = buildClientSummary(client);
-                  const followUpMessage = buildFollowUpMessage(client);
-                  const statusMeta = getStatusMeta(client.status);
-                  const whatsappHref = getWhatsAppHref(client.phone, followUpMessage);
+              <button
+                type="button"
+                onClick={closeFormModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-600 bg-white/5 text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-                  return (
-                    <article
-                      key={client.id}
-                      className="rounded-2xl border border-sky-500/20 bg-white/5 p-5 transition-colors hover:border-sky-400/40"
-                    >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <h4 className="truncate text-xl font-bold text-white">{client.name}</h4>
-                              <p className="mt-1 text-sm text-slate-400">
-                                {client.serviceInterest || 'Sem serviço definido'} •{' '}
-                                {client.segmentInterest === 'ambos'
-                                  ? 'Náutica + Docs PVC'
-                                  : getSegmentLabel(client.segmentInterest)}
-                              </p>
-                            </div>
-                            <span
-                              className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusMeta.badgeClassName}`}
-                            >
-                              {statusMeta.label}
-                            </span>
-                          </div>
+            <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-sky-500/20 bg-white/5 p-5">
+                  <h4 className="text-lg font-bold text-white">1. Contato principal</h4>
+                  <p className="mt-2 text-sm text-slate-400">
+                    Primeiro identifique o cliente e o melhor canal de retorno.
+                  </p>
 
-                          <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-300 sm:grid-cols-2">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-sky-300" />
-                              <span>{client.phone || 'Telefone não informado'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-sky-300" />
-                              <span className="truncate">{client.email || 'Email não informado'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-sky-300" />
-                              <span>{client.city || 'Cidade não informada'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <CalendarDays className="h-4 w-4 text-sky-300" />
-                              <span>{formatDateTime(client.scheduledFor)}</span>
-                            </div>
-                          </div>
+                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Nome do cliente</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+                        placeholder="Ex: Marina Oliveira"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
 
-                          <div className="mt-4 rounded-2xl border border-white/10 bg-[#020c1b]/45 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                              Observações
-                            </p>
-                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">
-                              {client.notes || 'Sem observações registradas.'}
-                            </p>
-                          </div>
-                        </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Telefone / WhatsApp</label>
+                      <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={(event) => setFormData((current) => ({ ...current, phone: event.target.value }))}
+                        placeholder="Ex: 48999999999"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
 
-                        <div className="flex w-full flex-col gap-2 xl:w-[240px]">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(summaryText, `${client.id}-summary`)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
-                          >
-                            <Copy className="h-4 w-4" />
-                            {copiedKey === `${client.id}-summary` ? 'Ficha copiada' : 'Copiar ficha'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCopy(
-                                [client.name, client.phone, client.email].filter(Boolean).join(' | '),
-                                `${client.id}-contact`
-                              )
-                            }
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
-                          >
-                            <Clipboard className="h-4 w-4" />
-                            {copiedKey === `${client.id}-contact` ? 'Contato copiado' : 'Copiar contato'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(followUpMessage, `${client.id}-message`)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition-colors hover:border-cyan-400/40 hover:bg-cyan-500/15"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                            {copiedKey === `${client.id}-message` ? 'Mensagem copiada' : 'Copiar mensagem'}
-                          </button>
-                          {whatsappHref && (
-                            <a
-                              href={whatsappHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              Abrir WhatsApp
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(client)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-500"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                            Editar cadastro
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(client.id)}
-                            disabled={deletingId === client.id}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {deletingId === client.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            Remover
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+                        placeholder="cliente@email.com"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">CPF / CNPJ / Documento</label>
+                      <input
+                        type="text"
+                        value={formData.document}
+                        onChange={(event) => setFormData((current) => ({ ...current, document: event.target.value }))}
+                        placeholder="Documento para referência"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-cyan-500/20 bg-white/5 p-5">
+                  <h4 className="text-lg font-bold text-white">2. Interesse e origem</h4>
+                  <p className="mt-2 text-sm text-slate-400">
+                    Defina de onde veio o lead, qual frente do app ele quer e o serviço principal.
+                  </p>
+
+                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Cidade / UF</label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(event) => setFormData((current) => ({ ...current, city: event.target.value }))}
+                        placeholder="Ex: Florianópolis - SC"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Origem do lead</label>
+                      <input
+                        type="text"
+                        value={formData.source}
+                        onChange={(event) => setFormData((current) => ({ ...current, source: event.target.value }))}
+                        placeholder="Ex: Instagram, indicação, site"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Área de interesse</label>
+                      <select
+                        value={formData.segmentInterest}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            segmentInterest: event.target.value as AgendaFormData['segmentInterest'],
+                          }))
+                        }
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
+                      >
+                        <option value="nautica">Assessoria Náutica</option>
+                        <option value="docs">Docs PVC</option>
+                        <option value="ambos">Ambos</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Serviço de interesse</label>
+                      <input
+                        type="text"
+                        value={formData.serviceInterest}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, serviceInterest: event.target.value }))
+                        }
+                        placeholder="Ex: Transferência, CRLV PVC, habilitação"
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-amber-500/20 bg-white/5 p-5">
+                  <h4 className="text-lg font-bold text-white">3. Situação e próxima ação</h4>
+                  <p className="mt-2 text-sm text-slate-400">
+                    Marque o status interno, programe o retorno e anote o contexto do atendimento.
+                  </p>
+
+                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Status</label>
+                      <select
+                        value={formData.status}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            status: event.target.value as AgendaClientStatus,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
+                      >
+                        {STATUS_META.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-300">Próximo retorno</label>
+                      <input
+                        type="datetime-local"
+                        value={formData.scheduledFor}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, scheduledFor: event.target.value }))
+                        }
+                        className="w-full rounded-xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Observações</label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(event) => setFormData((current) => ({ ...current, notes: event.target.value }))}
+                      placeholder="Anote documentos pendentes, objeções, combinado com o cliente e próximos passos."
+                      className="min-h-[150px] w-full rounded-2xl border border-sky-500/20 bg-[#020c1b]/55 px-4 py-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="glass-panel rounded-2xl border border-emerald-500/20 p-6">
-            <div className="flex items-center gap-2 text-emerald-300">
-              <CheckCircle2 className="h-4 w-4" />
-              <h3 className="text-lg font-bold text-white">Bloco rápido para copiar</h3>
+              <aside className="space-y-5">
+                <div className="rounded-2xl border border-emerald-500/20 bg-white/5 p-5">
+                  <div className="flex items-center gap-2 text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <h4 className="text-lg font-bold text-white">Prévia em colunas</h4>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Esta prévia mostra como o cliente vai aparecer na agenda após salvar.
+                  </p>
+
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-[#020c1b]/50">
+                    {summaryRows.map((row) => (
+                      <div
+                        key={row.label}
+                        className="grid grid-cols-[104px_minmax(0,1fr)] gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0"
+                      >
+                        <span className="font-semibold uppercase tracking-[0.16em] text-slate-500">
+                          {row.label}
+                        </span>
+                        <span className="min-w-0 break-words text-slate-200">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(buildClientSummary(previewClient), 'preview')}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+                    >
+                      <Clipboard className="h-4 w-4" />
+                      {copiedKey === 'preview' ? 'Ficha copiada' : 'Copiar ficha do cadastro'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(buildFollowUpMessage(previewClient), 'preview-message')}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      {copiedKey === 'preview-message' ? 'Mensagem copiada' : 'Copiar mensagem pronta'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-sky-500/20 bg-white/5 p-5">
+                  <div className="flex items-center gap-2 text-sky-300">
+                    <NotebookPen className="h-4 w-4" />
+                    <h4 className="text-lg font-bold text-white">Fluxo sugerido</h4>
+                  </div>
+                  <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+                    <p>1. Cadastre nome e contato principal.</p>
+                    <p>2. Marque a frente do app e o serviço que o cliente quer.</p>
+                    <p>3. Defina status e próximo retorno antes de salvar.</p>
+                    <p>4. Use a mensagem pronta para continuar o atendimento sem reescrever.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-2xl border border-sky-500/20 bg-white/5 p-5">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-3 font-bold text-white transition-all hover:from-sky-500 hover:to-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundPlus className="h-4 w-4" />}
+                    {editingId ? 'Salvar alterações' : 'Cadastrar cliente'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={closeFormModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancelar
+                  </button>
+                </div>
+              </aside>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Use esta área para gerar um texto-padrão de atendimento com base no cadastro em edição.
-            </p>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#020c1b]/45 p-4">
-              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
-                {buildFollowUpMessage(normalizeAgendaRecord({ id: 'preview', ...formData }))}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleCopy(
-                  buildFollowUpMessage(normalizeAgendaRecord({ id: 'preview', ...formData })),
-                  'preview-message'
-                )
-              }
-              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-            >
-              <MessageCircle className="h-4 w-4" />
-              {copiedKey === 'preview-message' ? 'Mensagem copiada' : 'Copiar mensagem pronta'}
-            </button>
           </div>
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

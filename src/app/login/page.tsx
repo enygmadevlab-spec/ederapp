@@ -1,11 +1,21 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '../../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  createUserWithEmailAndPassword,
+  setPersistence,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { Lock, Mail, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+
+const SAVED_LOGIN_EMAIL_KEY = 'ederapp.savedLoginEmail';
+const SAVED_KEEP_CONNECTED_KEY = 'ederapp.keepConnected';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +26,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [rememberAccount, setRememberAccount] = useState(true);
+  const [keepConnected, setKeepConnected] = useState(true);
   const isLightTheme = theme === 'light';
 
   const shellStyle = {
@@ -30,10 +42,28 @@ export default function LoginPage() {
     ? 'mb-4 rounded-lg border border-red-200 bg-red-50/90 p-3 text-sm text-red-700 flex items-center gap-2'
     : 'mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300 flex items-center gap-2';
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedEmail = window.localStorage.getItem(SAVED_LOGIN_EMAIL_KEY) || '';
+    const savedKeepConnected = window.localStorage.getItem(SAVED_KEEP_CONNECTED_KEY);
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberAccount(true);
+    }
+
+    if (savedKeepConnected === 'false') {
+      setKeepConnected(false);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
       if (!auth || !db) {
@@ -42,28 +72,52 @@ export default function LoginPage() {
       }
 
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await setPersistence(
+          auth,
+          keepConnected ? browserLocalPersistence : browserSessionPersistence
+        );
+        await signInWithEmailAndPassword(auth, normalizedEmail, password);
+
+        if (typeof window !== 'undefined') {
+          if (rememberAccount) {
+            window.localStorage.setItem(SAVED_LOGIN_EMAIL_KEY, normalizedEmail);
+          } else {
+            window.localStorage.removeItem(SAVED_LOGIN_EMAIL_KEY);
+          }
+
+          window.localStorage.setItem(
+            SAVED_KEEP_CONNECTED_KEY,
+            keepConnected ? 'true' : 'false'
+          );
+        }
+
         router.push('/services');
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
         await setDoc(doc(db, 'users', user.uid), {
           name: name,
-          email: email,
+          email: normalizedEmail,
           role: 'client',
           createdAt: new Date().toISOString()
         });
         router.push('/services');
       }
     } catch (err: unknown) {
-      console.error(err);
       const errorCode =
         typeof err === 'object' && err && 'code' in err ? String((err as { code?: string }).code) : '';
 
-      if (errorCode === 'auth/invalid-credential') setError('Email ou senha incorretos.');
-      else if (errorCode === 'auth/email-already-in-use') setError('Este email já está cadastrado.');
-      else setError('Ocorreu um erro. Tente novamente.');
+      if (errorCode === 'auth/invalid-credential') {
+        setError('Email ou senha incorretos.');
+      } else if (errorCode === 'auth/email-already-in-use') {
+        setError('Este email já está cadastrado.');
+      } else if (errorCode === 'auth/invalid-email') {
+        setError('Digite um email válido.');
+      } else {
+        console.error(err);
+        setError('Ocorreu um erro. Tente novamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +159,30 @@ export default function LoginPage() {
               <Lock className="absolute left-3 top-3.5 h-5 w-5 theme-text-subtle group-focus-within:text-blue-600 transition-colors" />
               <input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="theme-input w-full rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400" />
             </div>
+
+            {isLogin && (
+              <div className="grid grid-cols-1 gap-2 rounded-xl border border-sky-500/10 bg-white/5 px-4 py-3 text-sm sm:grid-cols-2">
+                <label className="flex items-center gap-2 theme-text-body">
+                  <input
+                    type="checkbox"
+                    checked={rememberAccount}
+                    onChange={(e) => setRememberAccount(e.target.checked)}
+                    className="h-4 w-4 rounded border-sky-500 accent-blue-600"
+                  />
+                  <span>Lembrar conta</span>
+                </label>
+
+                <label className="flex items-center gap-2 theme-text-body sm:justify-end">
+                  <input
+                    type="checkbox"
+                    checked={keepConnected}
+                    onChange={(e) => setKeepConnected(e.target.checked)}
+                    className="h-4 w-4 rounded border-sky-500 accent-blue-600"
+                  />
+                  <span>Manter conectado</span>
+                </label>
+              </div>
+            )}
 
             <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3.5 font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] hover:from-blue-500 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-70">
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isLogin ? 'Entrar' : 'Cadastrar')}
